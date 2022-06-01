@@ -4,15 +4,16 @@ import chisel3._
 import chisel3.util._
 import chisel3.experimental.FixedPoint
 
-class DecisionTreeNode(FPWidth: Int, FPBinaryPoint: Int, featureWidth: Int, nodeAddrWidth: Int) extends Bundle {
-  val threshold = FixedPoint(FPWidth.W, FPBinaryPoint.BP)
-  val feature   = UInt(featureWidth.W)
-  val rightNode = UInt(nodeAddrWidth.W)
-  val leftNode  = UInt(nodeAddrWidth.W)
+class DecisionTreeNode(FPWidth: Int, FPBinaryPoint: Int, featureIndexWidth: Int, nodeAddrWidth: Int) extends Bundle {
+  val threshold    = FixedPoint(FPWidth.W, FPBinaryPoint.BP)
+  val featureIndex = UInt(featureIndexWidth.W)
+  val rightNode    = UInt(nodeAddrWidth.W)
+  val leftNode     = UInt(nodeAddrWidth.W)
 }
 
 class DecisionTree(numFeatures: Int, numNodes: Int, FPWidth: Int, FPBinaryPoint: Int) extends Module {
-  val nodeAddrWidth = log2Ceil(numNodes)
+  val nodeAddrWidth     = log2Ceil(numNodes)
+  val featureIndexWidth = log2Ceil(numFeatures) + 1
 
   val io = IO(new Bundle {
     val in  = Flipped(Decoupled(Vec(numFeatures, FixedPoint(FPWidth.W, FPBinaryPoint.BP))))
@@ -20,28 +21,52 @@ class DecisionTree(numFeatures: Int, numNodes: Int, FPWidth: Int, FPBinaryPoint:
   })
 
   def getDecisionTreeRom(): Vec[DecisionTreeNode] = ???
-  val decisionTreeRom = getDecisionTreeRom()
+  val decisionTreeRom:      Vec[DecisionTreeNode] = getDecisionTreeRom()
 
   val idle :: busy :: Nil = Enum(2)
 
   val state = RegInit(idle)
   val start = io.in.valid & io.in.ready
-  val done  = WireInit(false.B)
+  val done  = RegInit(false.B)
   val rest  = io.out.valid & io.out.ready
 
-  val out      = Reg(Bool())
-  val outValid = Reg(Bool())
+  val candidate    = Reg(Vec(numFeatures, FixedPoint(FPWidth.W, FPBinaryPoint.BP)))
+  val node         = Reg(new DecisionTreeNode(FPWidth, FPBinaryPoint, featureIndexWidth, nodeAddrWidth))
+  val nodeAddr     = WireDefault(0.U(nodeAddrWidth.W))
+  val prevDecision = RegInit(false.B)
+  val out          = Reg(Bool())
+
+  io.out.valid := done
+  io.out.bits  := out
 
   // FSM
   when(state === idle) {
     io.in.ready := true.B
-    outValid    := false.B
     when(start) {
-      state := busy
+      state     := busy
+      candidate := io.in.bits
+      node      := decisionTreeRom(0)
     }
   }.elsewhen(state === busy) {
+    val featureIndex   = node.featureIndex
+    val featureValue   = candidate(featureIndex)
+    val thresholdValue = node.threshold
+    val isLeafNode     = featureIndex(featureIndexWidth - 1)
+
+    when(!done) {
+      when(isLeafNode) {
+        out  := prevDecision
+        done := true.B
+      }.otherwise {
+        val decision = featureValue <= thresholdValue
+        prevDecision := decision
+        node         := Mux(decision, decisionTreeRom(node.leftNode), decisionTreeRom(node.rightNode))
+      }
+    }
+
     when(rest) {
       state := idle
+      done  := false.B
     }
   }
 }
