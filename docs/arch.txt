@@ -1,0 +1,36 @@
+Random Forest high-level Architecture:
+M decision trees with N nodes each
+                   +-----------+
+                   |           |
+                   | Pulsar    |                                          Decision Tree Node Structure:
+                   | Candidate +---------------+                          +-------------+-------------+---------------+--------------+
+                   | RAM       |               |                          |Threshold(FP)|Feature Index|Right Node Addr|Left Node Addr|
+                   |           |               |                          +-------------+-------------+---------------+--------------+
+                   +-----------+               |                               ? bits       4 bits       log2(N) bits   log2(N) bits
+                                               V
+                                +--------------+-----------------+
+                                |    Pulsar Candidate Register   |
+                                +--------------+-----------------+
+                           +-------------------+-----------------------+
+                           V                   V                       V
+                   +-------+------+    +-------+------+        +-------+------+
+                   |              |    |              |        |              |
+                   | DecisionTree |    | DecisionTree |        | DecisionTree |
+                   |   Module - 1 |    |   Module - 2 |        |   Module - M |
+                   |              |    |              |        |              |
+                   |              |    |              |        |              |
+                   |  +--------+  |    |  +--------+  | ...... |  +--------+  |
+                   |  |  Tree  |  |    |  |  Tree  |  |        |  |  Tree  |  |
+                   |  |  Node  |  |    |  |  Node  |  |        |  |  Node  |  |
+                   |  |  ROM   |  |    |  |  ROM   |  |        |  |  ROM   |  |
+                   |  +--------+  |    |  +--------+  |        |  +--------+  |
+                   +------+-------+    +------+-------+        +-------+------+
+                          |                   |                        |
+                          V                   V                        V
+                   +------+-------------------+------------------------+------+
+                   |                  Majority Voter Module                   |
+                   +--------------------------+-------------------------------+
+                                              |
+                                              |
+                                              V
+                                          Decision
