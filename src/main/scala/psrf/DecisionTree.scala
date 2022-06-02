@@ -4,40 +4,45 @@ import chisel3._
 import chisel3.util._
 import chisel3.experimental.FixedPoint
 
-class DecisionTreeNode(FPWidth: Int, FPBinaryPoint: Int, featureIndexWidth: Int, nodeAddrWidth: Int) extends Bundle {
-  val threshold    = FixedPoint(FPWidth.W, FPBinaryPoint.BP)
+class DecisionTreeNode(fixedPointWidth: Int, fixedPointBinaryPoint: Int, featureIndexWidth: Int, nodeAddrWidth: Int)
+    extends Bundle {
+  val threshold    = FixedPoint(fixedPointWidth.W, fixedPointBinaryPoint.BP)
   val featureIndex = UInt(featureIndexWidth.W)
   val rightNode    = UInt(nodeAddrWidth.W)
   val leftNode     = UInt(nodeAddrWidth.W)
 }
 
-class DecisionTree(numFeatures: Int, numNodes: Int, FPWidth: Int, FPBinaryPoint: Int) extends Module {
+class DecisionTree(
+  tree:                  Seq[DecisionTreeNode],
+  numFeatures:           Int,
+  numNodes:              Int,
+  fixedPointWidth:       Int,
+  fixedPointBinaryPoint: Int)
+    extends Module {
   val nodeAddrWidth     = log2Ceil(numNodes)
   val featureIndexWidth = log2Ceil(numFeatures) + 1
 
   val io = IO(new Bundle {
-    val in  = Flipped(Decoupled(Vec(numFeatures, FixedPoint(FPWidth.W, FPBinaryPoint.BP))))
+    val in  = Flipped(Decoupled(Vec(numFeatures, FixedPoint(fixedPointWidth.W, fixedPointBinaryPoint.BP))))
     val out = Irrevocable(Bool())
   })
 
-  def getDecisionTreeRom(): Vec[DecisionTreeNode] = ???
-  val decisionTreeRom:      Vec[DecisionTreeNode] = getDecisionTreeRom()
+  val decisionTreeRom = VecInit(tree)
 
-  val idle :: busy :: Nil = Enum(2)
+  val idle :: busy :: done :: Nil = Enum(3)
 
   val state = RegInit(idle)
   val start = io.in.valid & io.in.ready
-  val done  = RegInit(false.B)
   val rest  = io.out.valid & io.out.ready
 
-  val candidate    = Reg(Vec(numFeatures, FixedPoint(FPWidth.W, FPBinaryPoint.BP)))
-  val node         = Reg(new DecisionTreeNode(FPWidth, FPBinaryPoint, featureIndexWidth, nodeAddrWidth))
+  val candidate    = Reg(Vec(numFeatures, FixedPoint(fixedPointWidth.W, fixedPointBinaryPoint.BP)))
+  val node         = Reg(new DecisionTreeNode(fixedPointWidth, fixedPointBinaryPoint, featureIndexWidth, nodeAddrWidth))
   val nodeAddr     = WireDefault(0.U(nodeAddrWidth.W))
   val prevDecision = RegInit(false.B)
-  val out          = Reg(Bool())
 
-  io.out.valid := done
-  io.out.bits  := out
+  io.in.ready  := false.B
+  io.out.valid := false.B
+  io.out.bits  := false.B
 
   // FSM
   when(state === idle) {
@@ -53,20 +58,32 @@ class DecisionTree(numFeatures: Int, numNodes: Int, FPWidth: Int, FPBinaryPoint:
     val thresholdValue = node.threshold
     val isLeafNode     = featureIndex(featureIndexWidth - 1)
 
-    when(!done) {
-      when(isLeafNode) {
-        out  := prevDecision
-        done := true.B
-      }.otherwise {
-        val decision = featureValue <= thresholdValue
-        prevDecision := decision
-        node         := Mux(decision, decisionTreeRom(node.leftNode), decisionTreeRom(node.rightNode))
-      }
+    when(isLeafNode) {
+      state := done
+    }.otherwise {
+      val decision = featureValue <= thresholdValue
+      prevDecision := decision
+      // TODO Check if extra delay needs to be added for ROM access
+      node := Mux(decision, decisionTreeRom(node.leftNode), decisionTreeRom(node.rightNode))
     }
-
+  }.elsewhen(state === done) {
+    io.out.valid := true.B
+    io.out.bits  := prevDecision
     when(rest) {
       state := idle
-      done  := false.B
     }
+  }
+}
+
+object DecisionTree {
+  def getDecisionTreeRom(): Vec[DecisionTreeNode] = ???
+  def apply(
+    tree:                  Seq[DecisionTreeNode],
+    numFeatures:           Int,
+    numNodes:              Int,
+    fixedPointWidth:       Int,
+    fixedPointBinaryPoint: Int
+  ): DecisionTree = {
+    Module(new DecisionTree(tree, numFeatures, numNodes, fixedPointWidth, fixedPointBinaryPoint))
   }
 }
