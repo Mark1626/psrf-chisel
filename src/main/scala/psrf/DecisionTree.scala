@@ -4,24 +4,25 @@ import chisel3._
 import chisel3.util._
 import chisel3.experimental.FixedPoint
 
-class DecisionTreeNode(fixedPointWidth: Int, fixedPointBinaryPoint: Int, featureIndexWidth: Int, nodeAddrWidth: Int)
-    extends Bundle {
+case class DecisionTreeParams(
+  numFeatures:           Int,
+  numNodes:              Int,
+  fixedPointWidth:       Int,
+  fixedPointBinaryPoint: Int) {
+  val nodeAddrWidth     = log2Ceil(numNodes)
+  val featureIndexWidth = log2Ceil(numFeatures) + 1
+}
+
+class DecisionTreeNode(p: DecisionTreeParams) extends Bundle {
+  import p._
   val threshold    = FixedPoint(fixedPointWidth.W, fixedPointBinaryPoint.BP)
   val featureIndex = UInt(featureIndexWidth.W)
   val rightNode    = UInt(nodeAddrWidth.W)
   val leftNode     = UInt(nodeAddrWidth.W)
 }
 
-class DecisionTree(
-  tree:                  Seq[DecisionTreeNode],
-  numFeatures:           Int,
-  numNodes:              Int,
-  fixedPointWidth:       Int,
-  fixedPointBinaryPoint: Int)
-    extends Module {
-  val nodeAddrWidth     = log2Ceil(numNodes)
-  val featureIndexWidth = log2Ceil(numFeatures) + 1
-
+class DecisionTree(tree: Seq[DecisionTreeNode], p: DecisionTreeParams) extends Module {
+  import p._
   val io = IO(new Bundle {
     val in  = Flipped(Decoupled(Vec(numFeatures, FixedPoint(fixedPointWidth.W, fixedPointBinaryPoint.BP))))
     val out = Irrevocable(Bool())
@@ -36,7 +37,7 @@ class DecisionTree(
   val rest  = io.out.valid & io.out.ready
 
   val candidate    = Reg(Vec(numFeatures, FixedPoint(fixedPointWidth.W, fixedPointBinaryPoint.BP)))
-  val node         = Reg(new DecisionTreeNode(fixedPointWidth, fixedPointBinaryPoint, featureIndexWidth, nodeAddrWidth))
+  val node         = Reg(new DecisionTreeNode(p))
   val nodeAddr     = WireDefault(0.U(nodeAddrWidth.W))
   val prevDecision = RegInit(false.B)
 
@@ -76,14 +77,9 @@ class DecisionTree(
 }
 
 object DecisionTree {
-  def getDecisionTreeRom(): Vec[DecisionTreeNode] = ???
-  def apply(
-    tree:                  Seq[DecisionTreeNode],
-    numFeatures:           Int,
-    numNodes:              Int,
-    fixedPointWidth:       Int,
-    fixedPointBinaryPoint: Int
-  ): DecisionTree = {
-    Module(new DecisionTree(tree, numFeatures, numNodes, fixedPointWidth, fixedPointBinaryPoint))
+  def apply(tree: Seq[DecisionTreeNode], p: DecisionTreeParams): DecisionTree = {
+    Module(new DecisionTree(tree, p))
   }
+
+  // TODO Add factory method to construct DecisionTree where numNodes parameter is based on the length of the input tree sequence
 }
