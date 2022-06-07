@@ -39,6 +39,7 @@ class DecisionTree(tree: Seq[DecisionTreeNode], p: DecisionTreeParams) extends M
   val candidate    = Reg(Vec(numFeatures, FixedPoint(fixedPointWidth.W, fixedPointBinaryPoint.BP)))
   val node         = Reg(new DecisionTreeNode(p))
   val nodeAddr     = WireDefault(0.U(nodeAddrWidth.W))
+  val decision     = WireDefault(false.B)
   val prevDecision = RegInit(false.B)
 
   io.in.ready  := false.B
@@ -62,7 +63,7 @@ class DecisionTree(tree: Seq[DecisionTreeNode], p: DecisionTreeParams) extends M
     when(isLeafNode) {
       state := done
     }.otherwise {
-      val decision = featureValue <= thresholdValue
+      decision     := featureValue <= thresholdValue
       prevDecision := decision
       // TODO Check if extra delay needs to be added for ROM access
       node := Mux(decision, decisionTreeRom(node.leftNode), decisionTreeRom(node.rightNode))

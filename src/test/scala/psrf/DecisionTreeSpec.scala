@@ -97,6 +97,20 @@ class DecisionTreeSpec extends FlatSpec with ChiselScalatestTester with Matchers
     decisionTreeSingleTest(p, inTree, inCandidate, expectedDecision)
   }
 
+  it should "be able to traverse a tree with five nodes and give correct decision" in {
+    val p = DecisionTreeParams(numFeatures = 2, numNodes = 5, fixedPointWidth = 5, fixedPointBinaryPoint = 2)
+    val inTree = Seq(
+      DecisionTreeNodeLit(threshold = 1, featureIndex = 0, rightNode = 2, leftNode = 1), // Root node
+      DecisionTreeNodeLit(threshold = 2, featureIndex = 1, rightNode = 4, leftNode = 3), // Left node
+      DecisionTreeNodeLit(threshold = 2, featureIndex = 2, rightNode = 0, leftNode = 0), // Right node
+      DecisionTreeNodeLit(threshold = 2, featureIndex = 2, rightNode = 0, leftNode = 0), // Left Left node
+      DecisionTreeNodeLit(threshold = 2, featureIndex = 2, rightNode = 0, leftNode = 0)  // Left Right node
+    )
+    val inCandidate      = Seq(0.5, 2.5)
+    val expectedDecision = false
+    decisionTreeSingleTest(p, inTree, inCandidate, expectedDecision)
+  }
+
   it should "give correct decision for multiple candidates" in {
     val p = DecisionTreeParams(numFeatures = 2, numNodes = 3, fixedPointWidth = 5, fixedPointBinaryPoint = 2)
     val inTree = Seq(
@@ -105,8 +119,8 @@ class DecisionTreeSpec extends FlatSpec with ChiselScalatestTester with Matchers
       DecisionTreeNodeLit(threshold = 2, featureIndex = 2, rightNode = 0, leftNode = 0)  // Right node
     )
 
-    val inCandidates      = Seq(Seq(0.5, 2), Seq(2, 0.5))
-    val expectedDecisions = Seq(true, false)
+    val inCandidates      = Seq(Seq(0.5, 2), Seq(2, 0.5), Seq(1, 0.5), Seq(1.5, 1))
+    val expectedDecisions = Seq(true, false, true, false)
     decisionTreeSeqTest(p, inTree, inCandidates, expectedDecisions)
   }
 }
