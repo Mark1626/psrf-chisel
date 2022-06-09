@@ -1,0 +1,39 @@
+@startuml
+skinparam dpi 300
+start
+repeat
+:**Wait for test candidate**
+//state = idle//
+//in.ready = true//
+//out.valid = false//;
+
+-> Receive valid input
+in.valid = true;
+
+:**Latch candidate**
+//state = busy//
+//in.ready = false//
+//current node = treeROM(0) = Root node//;
+
+-> Start tree traversal;
+
+repeat
+        if (**Candidate feature value <= Node threshold value**) then (true)
+                :**Fetch left node**
+                //current node = treeROM(left child node address)//
+                //previous decision = true//;
+        else (false)
+                :**Fetch right node**
+                //current node = treeROM(right child node address)//
+                //previous decision = false//;
+        endif
+repeat while (**Is current node a leaf node**) is (no)
+->yes;
+
+:**Latch output to previous decision**
+//state = done//
+//out = previous decision//
+//out.valid = true//;
+
+repeat while (**Wait until output is consumed**) is (Output consumed\n//out.ready = true//)
+@enduml
