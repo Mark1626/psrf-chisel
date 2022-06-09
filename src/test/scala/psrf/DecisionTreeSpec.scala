@@ -1,17 +1,19 @@
 package psrf
 
 import chisel3._
-import chisel3.util._
 import chisel3.experimental.BundleLiterals._
-import chisel3.experimental.VecLiterals._
-import chiseltest._
-import chiseltest.simulator.{VerilatorBackendAnnotation, WriteVcdAnnotation}
-import org.scalatest._
 import chisel3.experimental.FixedPoint
-import chisel3.internal.firrtl.Width
+import chisel3.experimental.VecLiterals._
 import chisel3.internal.firrtl.BinaryPoint
+import chisel3.internal.firrtl.Width
+import chisel3.util._
+import chiseltest._
+import chiseltest.simulator.VerilatorBackendAnnotation
+import chiseltest.simulator.WriteVcdAnnotation
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
-class DecisionTreeSpec extends FlatSpec with ChiselScalatestTester with Matchers {
+class DecisionTreeSpec extends AnyFlatSpec with ChiselScalatestTester with Matchers {
   case class DecisionTreeNodeLit(threshold: Double, featureIndex: Int, rightNode: Int, leftNode: Int)
 
   def decisionTreeNodeLitToChiselType(n: DecisionTreeNodeLit, p: DecisionTreeParams): DecisionTreeNode = {
@@ -122,5 +124,48 @@ class DecisionTreeSpec extends FlatSpec with ChiselScalatestTester with Matchers
     val inCandidates      = Seq(Seq(0.5, 2), Seq(2, 0.5), Seq(1, 0.5), Seq(1.5, 1))
     val expectedDecisions = Seq(true, false, true, false)
     decisionTreeSeqTest(p, inTree, inCandidates, expectedDecisions)
+  }
+
+  it should "keep output valid until it is consumed" in {
+    val p = DecisionTreeParams(numFeatures = 2, numNodes = 3, fixedPointWidth = 5, fixedPointBinaryPoint = 2)
+    val inTree = Seq(
+      DecisionTreeNodeLit(threshold = 1, featureIndex = 0, rightNode = 2, leftNode = 1), // Root node
+      DecisionTreeNodeLit(threshold = 2, featureIndex = 2, rightNode = 0, leftNode = 0), // Left node
+      DecisionTreeNodeLit(threshold = 2, featureIndex = 2, rightNode = 0, leftNode = 0)  // Right node
+    )
+    val inCandidate      = Seq(2d, 3d)
+    val expectedDecision = false
+
+    val annos     = Seq(WriteVcdAnnotation)
+    val tree      = inTree.map(n => decisionTreeNodeLitToChiselType(n, p))
+    val candidate = inCandidate.asFixedPointVecLit(p.fixedPointWidth.W, p.fixedPointBinaryPoint.BP)
+
+    test(new DecisionTree(tree, p)).withAnnotations(annos) { dut =>
+      dut.io.in.valid.poke(false.B)
+      dut.io.in.ready.expect(true.B)
+      dut.clock.step()
+      dut.io.in.bits.poke(candidate)
+      dut.io.in.valid.poke(true.B)
+      dut.io.out.ready.poke(false.B)
+      // Wait until output becomes valid
+      while (dut.io.out.valid.peek().litValue == 0) {
+        dut.clock.step()
+        dut.io.in.ready.expect(false.B)
+      }
+      dut.io.out.bits.expect(expectedDecision.B)
+      dut.io.in.valid.poke(false.B)
+      // Check if output stays latched for 10 cycles
+      for (i <- 0 until 10) {
+        dut.clock.step()
+        dut.io.in.ready.expect(false.B)
+        dut.io.out.valid.expect(true.B)
+        dut.io.out.bits.expect(expectedDecision.B)
+      }
+      // Check if module goes back to initial idle state when output is consumed
+      dut.io.out.ready.poke(true.B)
+      dut.clock.step()
+      dut.io.in.ready.expect(true.B)
+      dut.io.out.valid.expect(false.B)
+    }
   }
 }
