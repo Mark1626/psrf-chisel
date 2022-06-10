@@ -1,35 +1,18 @@
-package psrf
+package psrf.test
 
 import chisel3._
-import chisel3.experimental.BundleLiterals._
 import chisel3.experimental.FixedPoint
-import chisel3.experimental.VecLiterals._
-import chisel3.internal.firrtl.BinaryPoint
-import chisel3.internal.firrtl.Width
 import chisel3.util._
 import chiseltest._
 import chiseltest.simulator.VerilatorBackendAnnotation
 import chiseltest.simulator.WriteVcdAnnotation
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import psrf.DecisionTree
+import psrf.DecisionTreeNode
+import psrf.DecisionTreeParams
 
 class DecisionTreeSpec extends AnyFlatSpec with ChiselScalatestTester with Matchers {
-  case class DecisionTreeNodeLit(threshold: Double, featureIndex: Int, rightNode: Int, leftNode: Int)
-
-  def decisionTreeNodeLitToChiselType(n: DecisionTreeNodeLit, p: DecisionTreeParams): DecisionTreeNode = {
-    (new DecisionTreeNode(p)).Lit(
-      _.featureIndex -> n.featureIndex.U(p.featureIndexWidth.W),
-      _.threshold    -> FixedPoint.fromDouble(n.threshold, p.fixedPointWidth.W, p.fixedPointBinaryPoint.BP),
-      _.rightNode    -> n.rightNode.U(p.nodeAddrWidth.W),
-      _.leftNode     -> n.leftNode.U(p.nodeAddrWidth.W)
-    )
-  }
-
-  implicit class fromSeqDoubleToLiteral(s: Seq[Double]) {
-    def asFixedPointVecLit(width: Width, binaryPoint: BinaryPoint): Vec[FixedPoint] =
-      Vec.Lit(s.map(d => d.F(width, binaryPoint)): _*)
-  }
-
   def decisionTreeSingleTest(
     p:                DecisionTreeParams,
     inTree:           Seq[DecisionTreeNodeLit],
