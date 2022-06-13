@@ -10,14 +10,14 @@ case class DecisionTreeArrayParams(
   numFeatures:           Int,
   fixedPointWidth:       Int,
   fixedPointBinaryPoint: Int) {
-  require(numNodes.length == numTrees, "Number of numNodes provided do not match number of trees")
+  require(numNodes.length == numTrees, "Number of numNodes provided does not match number of trees")
 
   val decisionTreeParams = numNodes.map(n => DecisionTreeParams(numFeatures, n, fixedPointWidth, fixedPointBinaryPoint))
 }
 
 class DecisionTreeArraySimple(p: DecisionTreeArrayParams, trees: Seq[Seq[DecisionTreeNode]]) extends Module {
   import p._
-  require(trees.length == numTrees, "Number of tree ROMs provided do not match number of trees")
+  require(trees.length == numTrees, "Number of tree ROMs provided does not match number of trees")
 
   val io = IO(new Bundle {
     val in  = Flipped(Decoupled(Vec(numFeatures, FixedPoint(fixedPointWidth.W, fixedPointBinaryPoint.BP))))
