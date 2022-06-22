@@ -61,9 +61,15 @@ class DecisionTreeSpec extends AnyFlatSpec with ChiselScalatestTester with Match
   it should "got to left node and give correct decision" in {
     val p = DecisionTreeParams(numFeatures = 2, numNodes = 3, fixedPointWidth = 5, fixedPointBinaryPoint = 2)
     val inTree = Seq(
-      DecisionTreeNodeLit(threshold = 1, featureIndex = 0, rightNode = 2, leftNode = 1), // Root node
-      DecisionTreeNodeLit(threshold = 2, featureIndex = 2, rightNode = 0, leftNode = 0), // Left node
-      DecisionTreeNodeLit(threshold = 2, featureIndex = 2, rightNode = 0, leftNode = 0)  // Right node
+      DecisionTreeNodeLit(
+        isLeafNode = false,
+        featureIndex = 0,
+        threshold = 1,
+        rightNode = 2,
+        leftNode = 1
+      ),                                                                                                    // Root node
+      DecisionTreeNodeLit(isLeafNode = true, featureIndex = 1, threshold = 2, rightNode = 0, leftNode = 0), // Left node
+      DecisionTreeNodeLit(isLeafNode = true, featureIndex = 0, threshold = 2, rightNode = 0, leftNode = 0)  // Right node
     )
     val inCandidate      = Seq(0.5, 2)
     val expectedDecision = true
@@ -73,9 +79,15 @@ class DecisionTreeSpec extends AnyFlatSpec with ChiselScalatestTester with Match
   it should "got to right node and give correct decision" in {
     val p = DecisionTreeParams(numFeatures = 2, numNodes = 3, fixedPointWidth = 5, fixedPointBinaryPoint = 2)
     val inTree = Seq(
-      DecisionTreeNodeLit(threshold = 1, featureIndex = 1, rightNode = 2, leftNode = 1), // Root node
-      DecisionTreeNodeLit(threshold = 2, featureIndex = 2, rightNode = 0, leftNode = 0), // Left node
-      DecisionTreeNodeLit(threshold = 2, featureIndex = 2, rightNode = 0, leftNode = 0)  // Right node
+      DecisionTreeNodeLit(
+        isLeafNode = false,
+        featureIndex = 1,
+        threshold = 1,
+        rightNode = 2,
+        leftNode = 1
+      ),                                                                                                    // Root node
+      DecisionTreeNodeLit(isLeafNode = true, featureIndex = 1, threshold = 2, rightNode = 0, leftNode = 0), // Left node
+      DecisionTreeNodeLit(isLeafNode = true, featureIndex = 0, threshold = 2, rightNode = 0, leftNode = 0)  // Right node
     )
     val inCandidate      = Seq(0.5, 2)
     val expectedDecision = false
@@ -85,11 +97,41 @@ class DecisionTreeSpec extends AnyFlatSpec with ChiselScalatestTester with Match
   it should "be able to traverse a tree with five nodes and give correct decision" in {
     val p = DecisionTreeParams(numFeatures = 2, numNodes = 5, fixedPointWidth = 5, fixedPointBinaryPoint = 2)
     val inTree = Seq(
-      DecisionTreeNodeLit(threshold = 1, featureIndex = 0, rightNode = 2, leftNode = 1), // Root node
-      DecisionTreeNodeLit(threshold = 2, featureIndex = 1, rightNode = 4, leftNode = 3), // Left node
-      DecisionTreeNodeLit(threshold = 2, featureIndex = 2, rightNode = 0, leftNode = 0), // Right node
-      DecisionTreeNodeLit(threshold = 2, featureIndex = 2, rightNode = 0, leftNode = 0), // Left Left node
-      DecisionTreeNodeLit(threshold = 2, featureIndex = 2, rightNode = 0, leftNode = 0)  // Left Right node
+      DecisionTreeNodeLit(
+        isLeafNode = false,
+        featureIndex = 0,
+        threshold = 1,
+        rightNode = 2,
+        leftNode = 1
+      ), // Root node
+      DecisionTreeNodeLit(
+        isLeafNode = false,
+        featureIndex = 1,
+        threshold = 2,
+        rightNode = 4,
+        leftNode = 3
+      ), // Left node
+      DecisionTreeNodeLit(
+        isLeafNode = true,
+        featureIndex = 0,
+        threshold = 2,
+        rightNode = 0,
+        leftNode = 0
+      ), // Right node
+      DecisionTreeNodeLit(
+        isLeafNode = true,
+        featureIndex = 1,
+        threshold = 2,
+        rightNode = 0,
+        leftNode = 0
+      ), // Left Left node
+      DecisionTreeNodeLit(
+        isLeafNode = true,
+        featureIndex = 0,
+        threshold = 2,
+        rightNode = 0,
+        leftNode = 0
+      ) // Left Right node
     )
     val inCandidate      = Seq(0.5, 2.5)
     val expectedDecision = false
@@ -99,22 +141,33 @@ class DecisionTreeSpec extends AnyFlatSpec with ChiselScalatestTester with Match
   it should "give correct decision for multiple candidates" in {
     val p = DecisionTreeParams(numFeatures = 2, numNodes = 3, fixedPointWidth = 5, fixedPointBinaryPoint = 2)
     val inTree = Seq(
-      DecisionTreeNodeLit(threshold = 1, featureIndex = 0, rightNode = 2, leftNode = 1), // Root node
-      DecisionTreeNodeLit(threshold = 2, featureIndex = 2, rightNode = 0, leftNode = 0), // Left node
-      DecisionTreeNodeLit(threshold = 2, featureIndex = 2, rightNode = 0, leftNode = 0)  // Right node
+      DecisionTreeNodeLit(
+        isLeafNode = false,
+        featureIndex = 0,
+        threshold = 1,
+        rightNode = 2,
+        leftNode = 1
+      ),                                                                                                    // Root node
+      DecisionTreeNodeLit(isLeafNode = true, featureIndex = 1, threshold = 2, rightNode = 0, leftNode = 0), // Left node
+      DecisionTreeNodeLit(isLeafNode = true, featureIndex = 0, threshold = 2, rightNode = 0, leftNode = 0)  // Right node
     )
-
     val inCandidates      = Seq(Seq(0.5, 2), Seq(2, 0.5), Seq(1, 0.5), Seq(1.5, 1))
     val expectedDecisions = Seq(true, false, true, false)
     decisionTreeSeqTest(p, inTree, inCandidates, expectedDecisions)
   }
 
-  it should "keep output valid until it is consumed" in {
+  it should "keep output decision valid until it is consumed" in {
     val p = DecisionTreeParams(numFeatures = 2, numNodes = 3, fixedPointWidth = 5, fixedPointBinaryPoint = 2)
     val inTree = Seq(
-      DecisionTreeNodeLit(threshold = 1, featureIndex = 0, rightNode = 2, leftNode = 1), // Root node
-      DecisionTreeNodeLit(threshold = 2, featureIndex = 2, rightNode = 0, leftNode = 0), // Left node
-      DecisionTreeNodeLit(threshold = 2, featureIndex = 2, rightNode = 0, leftNode = 0)  // Right node
+      DecisionTreeNodeLit(
+        isLeafNode = false,
+        featureIndex = 0,
+        threshold = 1,
+        rightNode = 2,
+        leftNode = 1
+      ),                                                                                                    // Root node
+      DecisionTreeNodeLit(isLeafNode = true, featureIndex = 1, threshold = 2, rightNode = 0, leftNode = 0), // Left node
+      DecisionTreeNodeLit(isLeafNode = true, featureIndex = 0, threshold = 2, rightNode = 0, leftNode = 0)  // Right node
     )
     val inCandidate      = Seq(2d, 3d)
     val expectedDecision = false

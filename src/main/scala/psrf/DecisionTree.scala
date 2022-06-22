@@ -10,13 +10,14 @@ case class DecisionTreeParams(
   fixedPointWidth:       Int,
   fixedPointBinaryPoint: Int) {
   val nodeAddrWidth     = log2Ceil(numNodes)
-  val featureIndexWidth = log2Ceil(numFeatures) + 1
+  val featureIndexWidth = log2Ceil(numFeatures)
 }
 
 class DecisionTreeNode(p: DecisionTreeParams) extends Bundle {
   import p._
-  val threshold    = FixedPoint(fixedPointWidth.W, fixedPointBinaryPoint.BP)
+  val isLeafNode   = Bool()
   val featureIndex = UInt(featureIndexWidth.W)
+  val threshold    = FixedPoint(fixedPointWidth.W, fixedPointBinaryPoint.BP)
   val rightNode    = UInt(nodeAddrWidth.W)
   val leftNode     = UInt(nodeAddrWidth.W)
 }
@@ -36,11 +37,10 @@ class DecisionTree(tree: Seq[DecisionTreeNode], p: DecisionTreeParams) extends M
   val start = io.in.valid & io.in.ready
   val rest  = io.out.valid & io.out.ready
 
-  val candidate    = Reg(Vec(numFeatures, FixedPoint(fixedPointWidth.W, fixedPointBinaryPoint.BP)))
-  val node         = Reg(new DecisionTreeNode(p))
-  val nodeAddr     = WireDefault(0.U(nodeAddrWidth.W))
-  val decision     = WireDefault(false.B)
-  val prevDecision = RegInit(false.B)
+  val candidate = Reg(Vec(numFeatures, FixedPoint(fixedPointWidth.W, fixedPointBinaryPoint.BP)))
+  val node      = Reg(new DecisionTreeNode(p))
+  val nodeAddr  = WireDefault(0.U(nodeAddrWidth.W))
+  val decision  = WireDefault(false.B)
 
   io.in.ready  := false.B
   io.out.valid := false.B
@@ -58,19 +58,17 @@ class DecisionTree(tree: Seq[DecisionTreeNode], p: DecisionTreeParams) extends M
     val featureIndex   = node.featureIndex
     val featureValue   = candidate(featureIndex)
     val thresholdValue = node.threshold
-    val isLeafNode     = featureIndex(featureIndexWidth - 1)
 
-    when(isLeafNode) {
+    when(node.isLeafNode) {
       state := done
     }.otherwise {
-      decision     := featureValue <= thresholdValue
-      prevDecision := decision
+      decision := featureValue <= thresholdValue
       // TODO Check if extra delay needs to be added for ROM access
       node := Mux(decision, decisionTreeRom(node.leftNode), decisionTreeRom(node.rightNode))
     }
   }.elsewhen(state === done) {
     io.out.valid := true.B
-    io.out.bits  := prevDecision
+    io.out.bits  := node.featureIndex(0)
     when(rest) {
       state := idle
     }

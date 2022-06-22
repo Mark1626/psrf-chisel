@@ -48,14 +48,50 @@ class DecisionTreeArraySimpleSpec extends AnyFlatSpec with ChiselScalatestTester
 
     val trees = Seq(
       Seq(
-        DecisionTreeNodeLit(threshold = 1, featureIndex = 0, rightNode = 2, leftNode = 1), // Root node
-        DecisionTreeNodeLit(threshold = 2, featureIndex = 2, rightNode = 0, leftNode = 0), // Left node
-        DecisionTreeNodeLit(threshold = 2, featureIndex = 2, rightNode = 0, leftNode = 0)  // Right node
+        DecisionTreeNodeLit(
+          isLeafNode = false,
+          featureIndex = 0,
+          threshold = 1,
+          rightNode = 2,
+          leftNode = 1
+        ), // Root node
+        DecisionTreeNodeLit(
+          isLeafNode = true,
+          featureIndex = 1,
+          threshold = 2,
+          rightNode = 0,
+          leftNode = 0
+        ), // Left node
+        DecisionTreeNodeLit(
+          isLeafNode = true,
+          featureIndex = 0,
+          threshold = 2,
+          rightNode = 0,
+          leftNode = 0
+        ) // Right node
       ),
       Seq(
-        DecisionTreeNodeLit(threshold = 1, featureIndex = 1, rightNode = 2, leftNode = 1), // Root node
-        DecisionTreeNodeLit(threshold = 2, featureIndex = 2, rightNode = 0, leftNode = 0), // Left node
-        DecisionTreeNodeLit(threshold = 2, featureIndex = 2, rightNode = 0, leftNode = 0)  // Right node
+        DecisionTreeNodeLit(
+          isLeafNode = false,
+          featureIndex = 1,
+          threshold = 1,
+          rightNode = 2,
+          leftNode = 1
+        ), // Root node
+        DecisionTreeNodeLit(
+          isLeafNode = true,
+          featureIndex = 1,
+          threshold = 2,
+          rightNode = 0,
+          leftNode = 0
+        ), // Left node
+        DecisionTreeNodeLit(
+          isLeafNode = true,
+          featureIndex = 0,
+          threshold = 2,
+          rightNode = 0,
+          leftNode = 0
+        ) // Right node
       )
     )
 
@@ -75,16 +111,64 @@ class DecisionTreeArraySimpleSpec extends AnyFlatSpec with ChiselScalatestTester
 
     val trees = Seq(
       Seq(
-        DecisionTreeNodeLit(threshold = 1, featureIndex = 0, rightNode = 2, leftNode = 1), // Root node
-        DecisionTreeNodeLit(threshold = 2, featureIndex = 2, rightNode = 0, leftNode = 0), // Left node
-        DecisionTreeNodeLit(threshold = 2, featureIndex = 2, rightNode = 0, leftNode = 0)  // Right node
+        DecisionTreeNodeLit(
+          isLeafNode = false,
+          featureIndex = 0,
+          threshold = 1,
+          rightNode = 2,
+          leftNode = 1
+        ), // Root node
+        DecisionTreeNodeLit(
+          isLeafNode = true,
+          featureIndex = 1,
+          threshold = 2,
+          rightNode = 0,
+          leftNode = 0
+        ), // Left node
+        DecisionTreeNodeLit(
+          isLeafNode = true,
+          featureIndex = 0,
+          threshold = 2,
+          rightNode = 0,
+          leftNode = 0
+        ) // Right node
       ),
       Seq(
-        DecisionTreeNodeLit(threshold = 1, featureIndex = 0, rightNode = 2, leftNode = 1), // Root node
-        DecisionTreeNodeLit(threshold = 2, featureIndex = 1, rightNode = 4, leftNode = 3), // Left node
-        DecisionTreeNodeLit(threshold = 2, featureIndex = 2, rightNode = 0, leftNode = 0), // Right node
-        DecisionTreeNodeLit(threshold = 2, featureIndex = 2, rightNode = 0, leftNode = 0), // Left Left node
-        DecisionTreeNodeLit(threshold = 2, featureIndex = 2, rightNode = 0, leftNode = 0)  // Left Right node
+        DecisionTreeNodeLit(
+          isLeafNode = false,
+          featureIndex = 0,
+          threshold = 1,
+          rightNode = 2,
+          leftNode = 1
+        ), // Root node
+        DecisionTreeNodeLit(
+          isLeafNode = false,
+          featureIndex = 1,
+          threshold = 2,
+          rightNode = 4,
+          leftNode = 3
+        ), // Left node
+        DecisionTreeNodeLit(
+          isLeafNode = true,
+          featureIndex = 0,
+          threshold = 2,
+          rightNode = 0,
+          leftNode = 0
+        ), // Right node
+        DecisionTreeNodeLit(
+          isLeafNode = true,
+          featureIndex = 1,
+          threshold = 2,
+          rightNode = 0,
+          leftNode = 0
+        ), // Left Left node
+        DecisionTreeNodeLit(
+          isLeafNode = true,
+          featureIndex = 0,
+          threshold = 2,
+          rightNode = 0,
+          leftNode = 0
+        ) // Left Right node
       )
     )
 
