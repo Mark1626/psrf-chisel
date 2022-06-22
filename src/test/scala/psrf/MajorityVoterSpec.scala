@@ -74,4 +74,41 @@ class MajorityVoterSpec extends AnyFlatSpec with ChiselScalatestTester with Matc
 
     majorityVoterSeqTest(numTrees, inDecisions, expectedClassifications)
   }
+
+  it should "keep output classification valid until it is consumed" in {
+    val numTrees               = 5
+    val inDecisions            = Seq(true, true, false, true, false)
+    val expectedClassification = true
+
+    val annos     = Seq(WriteVcdAnnotation)
+    val decisions = Vec.Lit(inDecisions.map(_.B): _*)
+
+    test(new MajorityVoter(numTrees)).withAnnotations(annos) { dut =>
+      dut.io.in.valid.poke(false.B)
+      dut.io.in.ready.expect(true.B)
+      dut.clock.step()
+      dut.io.in.bits.poke(decisions)
+      dut.io.in.valid.poke(true.B)
+      dut.io.out.ready.poke(false.B)
+      // Wait until output becomes valid
+      while (dut.io.out.valid.peek().litValue == 0) {
+        dut.clock.step()
+        dut.io.in.ready.expect(false.B)
+      }
+      dut.io.out.bits.expect(expectedClassification.B)
+      dut.io.in.valid.poke(false.B)
+      // Check if output stays latched for 10 cycles
+      for (i <- 0 until 10) {
+        dut.clock.step()
+        dut.io.in.ready.expect(false.B)
+        dut.io.out.valid.expect(true.B)
+        dut.io.out.bits.expect(expectedClassification.B)
+      }
+      // Check if module goes back to initial idle state when output is consumed
+      dut.io.out.ready.poke(true.B)
+      dut.clock.step()
+      dut.io.in.ready.expect(true.B)
+      dut.io.out.valid.expect(false.B)
+    }
+  }
 }
