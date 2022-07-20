@@ -345,3 +345,9 @@ hs_err_pid*
 project/.bloop/
 project/metals.sbt
 project/project/*
+
+# Python venv files
+env/
+
+# Directory used for testing
+generated/
