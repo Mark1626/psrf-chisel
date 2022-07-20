@@ -6,19 +6,20 @@ import chisel3.util._
 import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import psrf.MajorityVoter
+import psrf.MajorityVoterArea
 
 class MajorityVoterSpec extends AnyFlatSpec with ChiselScalatestTester with Matchers {
   def majorityVoterSingleTest(
     numTrees:               Int,
-    inDecisions:            Seq[Boolean],
-    expectedClassification: Boolean
+    numClasses:             Int,
+    inDecisions:            Seq[Int],
+    expectedClassification: Int
   ): Unit = {
     val annos = Seq(WriteVcdAnnotation, VerilatorBackendAnnotation)
 
-    val decisions = Vec.Lit(inDecisions.map(_.B): _*)
+    val decisions = Vec.Lit(inDecisions.map(_.U): _*)
 
-    test(new MajorityVoter(numTrees)).withAnnotations(annos) { dut =>
+    test(new MajorityVoterArea(numTrees, numClasses)).withAnnotations(annos) { dut =>
       dut.io.in.valid.poke(false.B)
       dut.io.in.ready.expect(true.B)
       dut.clock.step()
@@ -26,20 +27,21 @@ class MajorityVoterSpec extends AnyFlatSpec with ChiselScalatestTester with Matc
       dut.io.in.valid.poke(true.B)
       dut.io.out.ready.poke(true.B)
       while (dut.io.out.valid.peek().litValue == 0) dut.clock.step()
-      dut.io.out.bits.expect(expectedClassification.B)
+      dut.io.out.bits.classification.expect(expectedClassification.U)
     }
   }
 
   def majorityVoterSeqTest(
     numTrees:                Int,
-    inDecisions:             Seq[Seq[Boolean]],
-    expectedClassifications: Seq[Boolean]
+    numClasses:              Int,
+    inDecisions:             Seq[Seq[Int]],
+    expectedClassifications: Seq[Int]
   ): Unit = {
     val annos = Seq(WriteVcdAnnotation)
 
     val decisions = inDecisions.map(d => Vec.Lit(d.map(_.B): _*))
 
-    test(new MajorityVoter(numTrees)).withAnnotations(annos) { dut =>
+    test(new MajorityVoterArea(numTrees, numClasses)).withAnnotations(annos) { dut =>
       dut.io.in.initSource()
       dut.io.in.setSourceClock(dut.clock)
       dut.io.out.initSink()

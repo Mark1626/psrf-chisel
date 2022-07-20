@@ -7,12 +7,16 @@ import chisel3.experimental.FixedPoint
 case class DecisionTreeArrayParams(
   numTrees:              Int,
   numNodes:              Seq[Int],
+  numClasses:            Int,
   numFeatures:           Int,
   fixedPointWidth:       Int,
   fixedPointBinaryPoint: Int) {
   require(numNodes.length == numTrees, "Number of numNodes provided does not match number of trees")
 
-  val decisionTreeParams = numNodes.map(n => DecisionTreeParams(numFeatures, n, fixedPointWidth, fixedPointBinaryPoint))
+  // TODO Fix unnecessary recalculation of classIndexWidth
+  val classIndexWidth = log2Ceil(numClasses)
+  val decisionTreeParams =
+    numNodes.map(n => DecisionTreeParams(numFeatures, n, numClasses, fixedPointWidth, fixedPointBinaryPoint))
 }
 
 class DecisionTreeArraySimple(p: DecisionTreeArrayParams, trees: Seq[Seq[DecisionTreeNode]]) extends Module {
@@ -21,7 +25,7 @@ class DecisionTreeArraySimple(p: DecisionTreeArrayParams, trees: Seq[Seq[Decisio
 
   val io = IO(new Bundle {
     val in  = Flipped(Decoupled(Vec(numFeatures, FixedPoint(fixedPointWidth.W, fixedPointBinaryPoint.BP))))
-    val out = Irrevocable(Vec(numTrees, Bool()))
+    val out = Irrevocable(Vec(numTrees, UInt(classIndexWidth.W)))
   })
 
   val decisionTrees = (0 until numTrees).map(i => DecisionTree(trees(i), decisionTreeParams(i)))

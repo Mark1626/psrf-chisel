@@ -9,19 +9,19 @@ import chisel3.internal.firrtl.Width
 
 package object test {
   case class DecisionTreeNodeLit(
-    isLeafNode:   Boolean,
-    featureIndex: Int,
-    threshold:    Double,
-    rightNode:    Int,
-    leftNode:     Int)
+    isLeafNode:        Boolean,
+    featureClassIndex: Int,
+    threshold:         Double,
+    rightNode:         Int,
+    leftNode:          Int)
 
   def decisionTreeNodeLitToChiselType(n: DecisionTreeNodeLit, p: DecisionTreeParams): DecisionTreeNode = {
     (new DecisionTreeNode(p)).Lit(
-      _.isLeafNode   -> n.isLeafNode.B,
-      _.featureIndex -> n.featureIndex.U(p.featureIndexWidth.W),
-      _.threshold    -> FixedPoint.fromDouble(n.threshold, p.fixedPointWidth.W, p.fixedPointBinaryPoint.BP),
-      _.rightNode    -> n.rightNode.U(p.nodeAddrWidth.W),
-      _.leftNode     -> n.leftNode.U(p.nodeAddrWidth.W)
+      _.isLeafNode        -> n.isLeafNode.B,
+      _.featureClassIndex -> n.featureClassIndex.U(p.featureIndexWidth.W),
+      _.threshold         -> FixedPoint.fromDouble(n.threshold, p.fixedPointWidth.W, p.fixedPointBinaryPoint.BP),
+      _.rightNode         -> n.rightNode.U(p.nodeAddrWidth.W),
+      _.leftNode          -> n.leftNode.U(p.nodeAddrWidth.W)
     )
   }
 

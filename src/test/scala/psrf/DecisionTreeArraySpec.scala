@@ -14,7 +14,7 @@ class DecisionTreeArraySimpleSpec extends AnyFlatSpec with ChiselScalatestTester
     p:                   DecisionTreeArrayParams,
     treesLit:            Seq[Seq[DecisionTreeNodeLit]],
     inCandidate:         Seq[Double],
-    expectedDecisionLit: Seq[Boolean]
+    expectedDecisionLit: Seq[Int]
   ): Unit = {
     val annos = Seq(WriteVcdAnnotation)
 
@@ -23,7 +23,7 @@ class DecisionTreeArraySimpleSpec extends AnyFlatSpec with ChiselScalatestTester
         tree.map(node => decisionTreeNodeLitToChiselType(node, param))
       }
     val candidate        = inCandidate.asFixedPointVecLit(p.fixedPointWidth.W, p.fixedPointBinaryPoint.BP)
-    val expectedDecision = Vec.Lit(expectedDecisionLit.map(_.B): _*)
+    val expectedDecision = Vec.Lit(expectedDecisionLit.map(_.U): _*)
 
     test(new DecisionTreeArraySimple(p, trees)).withAnnotations(annos) { dut =>
       dut.io.in.valid.poke(false.B)
@@ -41,6 +41,7 @@ class DecisionTreeArraySimpleSpec extends AnyFlatSpec with ChiselScalatestTester
     val p = DecisionTreeArrayParams(
       numTrees = 2,
       numNodes = Seq(3, 3),
+      numClasses = 2,
       numFeatures = 2,
       fixedPointWidth = 5,
       fixedPointBinaryPoint = 2
@@ -50,21 +51,21 @@ class DecisionTreeArraySimpleSpec extends AnyFlatSpec with ChiselScalatestTester
       Seq(
         DecisionTreeNodeLit(
           isLeafNode = false,
-          featureIndex = 0,
+          featureClassIndex = 0,
           threshold = 1,
           rightNode = 2,
           leftNode = 1
         ), // Root node
         DecisionTreeNodeLit(
           isLeafNode = true,
-          featureIndex = 1,
+          featureClassIndex = 1,
           threshold = 2,
           rightNode = 0,
           leftNode = 0
         ), // Left node
         DecisionTreeNodeLit(
           isLeafNode = true,
-          featureIndex = 0,
+          featureClassIndex = 0,
           threshold = 2,
           rightNode = 0,
           leftNode = 0
@@ -73,21 +74,21 @@ class DecisionTreeArraySimpleSpec extends AnyFlatSpec with ChiselScalatestTester
       Seq(
         DecisionTreeNodeLit(
           isLeafNode = false,
-          featureIndex = 1,
+          featureClassIndex = 1,
           threshold = 1,
           rightNode = 2,
           leftNode = 1
         ), // Root node
         DecisionTreeNodeLit(
           isLeafNode = true,
-          featureIndex = 1,
+          featureClassIndex = 1,
           threshold = 2,
           rightNode = 0,
           leftNode = 0
         ), // Left node
         DecisionTreeNodeLit(
           isLeafNode = true,
-          featureIndex = 0,
+          featureClassIndex = 0,
           threshold = 2,
           rightNode = 0,
           leftNode = 0
@@ -96,7 +97,7 @@ class DecisionTreeArraySimpleSpec extends AnyFlatSpec with ChiselScalatestTester
     )
 
     val inCandidate      = Seq(0.5, 2)
-    val expectedDecision = Seq(true, false)
+    val expectedDecision = Seq(1, 0)
     decisionTreeArraySimpleSingleTest(p, trees, inCandidate, expectedDecision)
   }
 
@@ -104,6 +105,7 @@ class DecisionTreeArraySimpleSpec extends AnyFlatSpec with ChiselScalatestTester
     val p = DecisionTreeArrayParams(
       numTrees = 2,
       numNodes = Seq(3, 5),
+      numClasses = 2,
       numFeatures = 2,
       fixedPointWidth = 5,
       fixedPointBinaryPoint = 2
@@ -113,21 +115,21 @@ class DecisionTreeArraySimpleSpec extends AnyFlatSpec with ChiselScalatestTester
       Seq(
         DecisionTreeNodeLit(
           isLeafNode = false,
-          featureIndex = 0,
+          featureClassIndex = 0,
           threshold = 1,
           rightNode = 2,
           leftNode = 1
         ), // Root node
         DecisionTreeNodeLit(
           isLeafNode = true,
-          featureIndex = 1,
+          featureClassIndex = 1,
           threshold = 2,
           rightNode = 0,
           leftNode = 0
         ), // Left node
         DecisionTreeNodeLit(
           isLeafNode = true,
-          featureIndex = 0,
+          featureClassIndex = 0,
           threshold = 2,
           rightNode = 0,
           leftNode = 0
@@ -136,35 +138,35 @@ class DecisionTreeArraySimpleSpec extends AnyFlatSpec with ChiselScalatestTester
       Seq(
         DecisionTreeNodeLit(
           isLeafNode = false,
-          featureIndex = 0,
+          featureClassIndex = 0,
           threshold = 1,
           rightNode = 2,
           leftNode = 1
         ), // Root node
         DecisionTreeNodeLit(
           isLeafNode = false,
-          featureIndex = 1,
+          featureClassIndex = 1,
           threshold = 2,
           rightNode = 4,
           leftNode = 3
         ), // Left node
         DecisionTreeNodeLit(
           isLeafNode = true,
-          featureIndex = 0,
+          featureClassIndex = 0,
           threshold = 2,
           rightNode = 0,
           leftNode = 0
         ), // Right node
         DecisionTreeNodeLit(
           isLeafNode = true,
-          featureIndex = 1,
+          featureClassIndex = 1,
           threshold = 2,
           rightNode = 0,
           leftNode = 0
         ), // Left Left node
         DecisionTreeNodeLit(
           isLeafNode = true,
-          featureIndex = 0,
+          featureClassIndex = 0,
           threshold = 2,
           rightNode = 0,
           leftNode = 0
@@ -173,7 +175,7 @@ class DecisionTreeArraySimpleSpec extends AnyFlatSpec with ChiselScalatestTester
     )
 
     val inCandidate      = Seq(0.5, 2.5)
-    val expectedDecision = Seq(true, false)
+    val expectedDecision = Seq(1, 0)
     decisionTreeArraySimpleSingleTest(p, trees, inCandidate, expectedDecision)
   }
 }

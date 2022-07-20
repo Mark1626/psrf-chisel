@@ -7,26 +7,29 @@ import chisel3.experimental.FixedPoint
 case class DecisionTreeParams(
   numFeatures:           Int,
   numNodes:              Int,
+  numClasses:            Int,
   fixedPointWidth:       Int,
   fixedPointBinaryPoint: Int) {
   val nodeAddrWidth     = log2Ceil(numNodes)
   val featureIndexWidth = log2Ceil(numFeatures)
+  // TODO Fix unnecessary recalculation of classIndexWidth
+  val classIndexWidth = log2Ceil(numClasses)
 }
 
 class DecisionTreeNode(p: DecisionTreeParams) extends Bundle {
   import p._
-  val isLeafNode   = Bool()
-  val featureIndex = UInt(featureIndexWidth.W)
-  val threshold    = FixedPoint(fixedPointWidth.W, fixedPointBinaryPoint.BP)
-  val rightNode    = UInt(nodeAddrWidth.W)
-  val leftNode     = UInt(nodeAddrWidth.W)
+  val isLeafNode        = Bool()
+  val featureClassIndex = UInt(math.max(featureIndexWidth, classIndexWidth).W)
+  val threshold         = FixedPoint(fixedPointWidth.W, fixedPointBinaryPoint.BP)
+  val rightNode         = UInt(nodeAddrWidth.W)
+  val leftNode          = UInt(nodeAddrWidth.W)
 }
 
 class DecisionTree(tree: Seq[DecisionTreeNode], p: DecisionTreeParams) extends Module {
   import p._
   val io = IO(new Bundle {
     val in  = Flipped(Decoupled(Vec(numFeatures, FixedPoint(fixedPointWidth.W, fixedPointBinaryPoint.BP))))
-    val out = Irrevocable(Bool())
+    val out = Irrevocable(UInt(classIndexWidth.W))
   })
 
   val decisionTreeRom = VecInit(tree)
@@ -44,7 +47,7 @@ class DecisionTree(tree: Seq[DecisionTreeNode], p: DecisionTreeParams) extends M
 
   io.in.ready  := false.B
   io.out.valid := false.B
-  io.out.bits  := false.B
+  io.out.bits  := 0.U
 
   // FSM
   when(state === idle) {
@@ -55,7 +58,7 @@ class DecisionTree(tree: Seq[DecisionTreeNode], p: DecisionTreeParams) extends M
       node      := decisionTreeRom(0)
     }
   }.elsewhen(state === busy) {
-    val featureIndex   = node.featureIndex
+    val featureIndex   = node.featureClassIndex
     val featureValue   = candidate(featureIndex)
     val thresholdValue = node.threshold
 
@@ -68,7 +71,7 @@ class DecisionTree(tree: Seq[DecisionTreeNode], p: DecisionTreeParams) extends M
     }
   }.elsewhen(state === done) {
     io.out.valid := true.B
-    io.out.bits  := node.featureIndex(0)
+    io.out.bits  := node.featureClassIndex(classIndexWidth - 1, 0)
     when(rest) {
       state := idle
     }
