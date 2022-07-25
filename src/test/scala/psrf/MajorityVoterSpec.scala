@@ -2,18 +2,21 @@ package psrf.test
 
 import chisel3._
 import chisel3.experimental.VecLiterals._
+import chisel3.experimental.BundleLiterals._
 import chisel3.util._
 import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import psrf.MajorityVoterArea
+import psrf.MajorityVoterOut
 
 class MajorityVoterSpec extends AnyFlatSpec with ChiselScalatestTester with Matchers {
   def majorityVoterSingleTest(
-    numTrees:               Int,
-    numClasses:             Int,
-    inDecisions:            Seq[Int],
-    expectedClassification: Int
+    numTrees:                Int,
+    numClasses:              Int,
+    inDecisions:             Seq[Int],
+    expectedClassification:  Int,
+    expectedNoClearMajority: Option[Boolean] = None
   ): Unit = {
     val annos = Seq(WriteVcdAnnotation, VerilatorBackendAnnotation)
 
@@ -25,9 +28,12 @@ class MajorityVoterSpec extends AnyFlatSpec with ChiselScalatestTester with Matc
       dut.clock.step()
       dut.io.in.bits.poke(decisions)
       dut.io.in.valid.poke(true.B)
-      dut.io.out.ready.poke(true.B)
+      dut.io.out.ready.poke(false.B)
       while (dut.io.out.valid.peek().litValue == 0) dut.clock.step()
       dut.io.out.bits.classification.expect(expectedClassification.U)
+      if (expectedNoClearMajority.isDefined) {
+        dut.io.out.bits.noClearMajority.expect(expectedClassification.U)
+      }
     }
   }
 
@@ -35,11 +41,17 @@ class MajorityVoterSpec extends AnyFlatSpec with ChiselScalatestTester with Matc
     numTrees:                Int,
     numClasses:              Int,
     inDecisions:             Seq[Seq[Int]],
-    expectedClassifications: Seq[Int]
+    expectedClassifications: Seq[Int],
+    expectedNoClearMajority: Seq[Boolean]
   ): Unit = {
     val annos = Seq(WriteVcdAnnotation)
 
-    val decisions = inDecisions.map(d => Vec.Lit(d.map(_.B): _*))
+    val decisions = inDecisions.map(d => Vec.Lit(d.map(_.U): _*))
+    val expected = expectedClassifications
+      .zip(expectedNoClearMajority)
+      .map(x =>
+        (new MajorityVoterOut(log2Ceil(numClasses))).Lit(_.classification -> x._1.U, _.noClearMajority -> x._2.B)
+      )
 
     test(new MajorityVoterArea(numTrees, numClasses)).withAnnotations(annos) { dut =>
       dut.io.in.initSource()
@@ -50,42 +62,47 @@ class MajorityVoterSpec extends AnyFlatSpec with ChiselScalatestTester with Matc
       fork {
         dut.io.in.enqueueSeq(decisions)
       }.fork {
-        dut.io.out.expectDequeueSeq(expectedClassifications.map(_.B))
+        dut.io.out.expectDequeueSeq(expected)
       }.join()
     }
   }
 
-  it should "give correct classification for three input trees" in {
-    val numTrees               = 3
-    val inDecisions            = Seq(true, true, false)
-    val expectedClassification = true
+  it should "give correct classification for three input trees with two classes" in {
+    val numTrees                = 3
+    val numClasses              = 2
+    val inDecisions             = Seq(1, 0, 1)
+    val expectedClassification  = 1
+    val expectedNoClearMajority = false
 
-    majorityVoterSingleTest(numTrees, inDecisions, expectedClassification)
+    majorityVoterSingleTest(numTrees, numClasses, inDecisions, expectedClassification)
   }
 
-  it should "give correct classifications for five input trees in any order" in {
+  it should "give correct classifications for five input trees with two classes in any order" in {
     val numTrees       = 5
+    val numClasses     = 2
     val countThreshold = math.ceil(numTrees.toDouble / 2).toInt
-    def intAsBooleanSeq(bits: Int, n: Int): Seq[Boolean] = {
-      val masks = (0 until bits).map(1 << _)
-      masks.map(m => (n & m) == m)
+    def intAsBinarySeq(bits: Int, n: Int): Seq[Int] = {
+      (0 until bits).map(b => (n >> b) & 1)
     }
 
-    val inDecisions             = (0 until math.pow(2, numTrees).toInt).map(intAsBooleanSeq(numTrees, _))
-    val expectedClassifications = inDecisions.map(d => d.count(b => b) >= countThreshold)
+    val inDecisions             = (0 until math.pow(2, numTrees).toInt).map(intAsBinarySeq(numTrees, _))
+    val expectedClassifications = inDecisions.map(d => if (d.count(_ == 1) >= countThreshold) 1 else 0)
+    val expectedNoClearMajority = Seq.fill(math.pow(2, numTrees).toInt)(false)
 
-    majorityVoterSeqTest(numTrees, inDecisions, expectedClassifications)
+    majorityVoterSeqTest(numTrees, numClasses, inDecisions, expectedClassifications, expectedNoClearMajority)
   }
 
   it should "keep output classification valid until it is consumed" in {
-    val numTrees               = 5
-    val inDecisions            = Seq(true, true, false, true, false)
-    val expectedClassification = true
+    val numTrees                = 5
+    val numClasses              = 2
+    val inDecisions             = Seq(1, 1, 0, 1, 0)
+    val expectedClassification  = 1
+    val expectedNoClearMajority = false
 
     val annos     = Seq(WriteVcdAnnotation)
-    val decisions = Vec.Lit(inDecisions.map(_.B): _*)
+    val decisions = Vec.Lit(inDecisions.map(_.U): _*)
 
-    test(new MajorityVoter(numTrees)).withAnnotations(annos) { dut =>
+    test(new MajorityVoterArea(numTrees, numClasses)).withAnnotations(annos) { dut =>
       dut.io.in.valid.poke(false.B)
       dut.io.in.ready.expect(true.B)
       dut.clock.step()
@@ -97,14 +114,16 @@ class MajorityVoterSpec extends AnyFlatSpec with ChiselScalatestTester with Matc
         dut.clock.step()
         dut.io.in.ready.expect(false.B)
       }
-      dut.io.out.bits.expect(expectedClassification.B)
+      dut.io.out.bits.classification.expect(expectedClassification.U)
+      dut.io.out.bits.noClearMajority.expect(expectedNoClearMajority.B)
       dut.io.in.valid.poke(false.B)
       // Check if output stays latched for 10 cycles
       for (i <- 0 until 10) {
         dut.clock.step()
         dut.io.in.ready.expect(false.B)
         dut.io.out.valid.expect(true.B)
-        dut.io.out.bits.expect(expectedClassification.B)
+        dut.io.out.bits.classification.expect(expectedClassification.U)
+        dut.io.out.bits.noClearMajority.expect(expectedNoClearMajority.B)
       }
       // Check if module goes back to initial idle state when output is consumed
       dut.io.out.ready.poke(true.B)
@@ -112,5 +131,25 @@ class MajorityVoterSpec extends AnyFlatSpec with ChiselScalatestTester with Matc
       dut.io.in.ready.expect(true.B)
       dut.io.out.valid.expect(false.B)
     }
+  }
+
+  it should "give correct classification for five input trees with three classes" in {
+    val numTrees                = 5
+    val numClasses              = 3
+    val inDecisions             = Seq(2, 1, 0, 0, 0)
+    val expectedClassification  = 0
+    val expectedNoClearMajority = false
+
+    majorityVoterSingleTest(numTrees, numClasses, inDecisions, expectedClassification)
+  }
+
+  it should "give correct classification and indicate no clear majority for five input trees with three classes" in {
+    val numTrees                = 5
+    val numClasses              = 3
+    val inDecisions             = Seq(2, 1, 0, 0, 2)
+    val expectedClassification  = 0
+    val expectedNoClearMajority = true
+
+    majorityVoterSingleTest(numTrees, numClasses, inDecisions, expectedClassification)
   }
 }

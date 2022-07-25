@@ -3,14 +3,16 @@ package psrf
 import chisel3._
 import chisel3.util._
 
+class MajorityVoterOut(classIndexWidth: Int) extends Bundle {
+  val classification  = UInt(classIndexWidth.W)
+  val noClearMajority = Bool()
+}
+
 abstract class MajorityVoterModule(numTrees: Int, numClasses: Int) extends Module {
   val classIndexWidth = log2Ceil(numClasses)
   val io = IO(new Bundle {
-    val in = Flipped(Decoupled(Vec(numTrees, UInt(classIndexWidth.W))))
-    val out = Irrevocable(new Bundle {
-      val classification  = UInt(classIndexWidth.W)
-      val noClearMajority = Bool()
-    })
+    val in  = Flipped(Decoupled(Vec(numTrees, UInt(classIndexWidth.W))))
+    val out = Irrevocable(new MajorityVoterOut(classIndexWidth))
   })
 }
 
@@ -27,10 +29,16 @@ class MajorityVoterArea(numTrees: Int, numClasses: Int) extends MajorityVoterMod
     io.in.ready   := pipeEnq.ready
     pipeEnq.bits  := count
 
-    pipeQueue.ready             := io.out.ready
-    io.out.valid                := pipeQueue.valid
-    io.out.bits.classification  := pipeQueue.bits > countThreshold
-    io.out.bits.noClearMajority := pipeEnq.bits === countThreshold
+    pipeQueue.ready := io.out.ready
+    io.out.valid    := pipeQueue.valid
+
+    if (numTrees % 2 == 0) {
+      io.out.bits.classification  := pipeQueue.bits > countThreshold
+      io.out.bits.noClearMajority := pipeEnq.bits === countThreshold
+    } else {
+      io.out.bits.classification  := pipeQueue.bits >= countThreshold
+      io.out.bits.noClearMajority := false.B
+    }
   } else {
     val idle :: busy :: done :: Nil = Enum(3)
     val count :: compare :: Nil     = Enum(2)
@@ -51,9 +59,10 @@ class MajorityVoterArea(numTrees: Int, numClasses: Int) extends MajorityVoterMod
     val classCountCond               = WireDefault(false.B)
     val (classCount, classCountWrap) = Counter(classCountCond, numClasses)
 
-    io.in.ready  := false.B
-    io.out.valid := false.B
-    io.out.bits  := 0.U
+    io.in.ready                 := false.B
+    io.out.valid                := false.B
+    io.out.bits.classification  := 0.U
+    io.out.bits.noClearMajority := false.B
 
     // FSM
     switch(state) {

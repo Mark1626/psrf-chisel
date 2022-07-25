@@ -1,6 +1,6 @@
 {
     "dataset": "iris",
-    "train_split": 0.7,
+    "train_split_size": 0.7,
     "n_estimators": 10,
     "max_leaf_nodes": 5
 }
