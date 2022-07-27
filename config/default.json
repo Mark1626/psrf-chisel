@@ -2,5 +2,10 @@
     "dataset": "iris",
     "train_split_size": 0.7,
     "n_estimators": 10,
-    "max_leaf_nodes": 5
+    "max_leaf_nodes": 5,
+    "to_hw_stage": {
+        "fixed_point_width": 8,
+        "fixed_point_bp": 4,
+        "majority_voter_type": "area"
+    }
 }

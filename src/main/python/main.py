@@ -7,12 +7,16 @@ import rw_json
 
 def main(args):
 
+    # Load input configuration JSON file
     if args.verbose:
         print("Loading input configuration file: {0}\n".format(args.config))
 
     config = rw_json.read_json_file(args.config)
-    dataset = config.get("dataset")
 
+    # Load dataset
+    # TODO Currently only iris dataset is supported. Add support for other
+    # datasets in csv files with user options for data and target headers
+    dataset = config.get("dataset")
     print("Loading dataset...\n")
     input_data = []
     target_data = []
@@ -25,6 +29,7 @@ def main(args):
         print("Unsupported dataset: {0}\n".format(dataset))
         exit(1)
 
+    # Train a random forest classifier based on input parameters
     rf_classifier = rf_train.train_rf_classifier(
         input_data=input_data,
         target_data=target_data,
@@ -37,12 +42,18 @@ def main(args):
         verbose=args.verbose,
     )
 
-    rf_classifier_params = rf_train.extract_rf_classifier_params(rf_classifier)
+    # Extract necessary data and parameters from the trained random forest
+    # classifier to be tranmitted to HW stage
+    params = rf_train.extract_rf_classifier_params(rf_classifier)
+    to_hw_stage_params = config.get("to_hw_stage")
+    if to_hw_stage_params:
+        params.update(to_hw_stage_params)
 
+    # Write output JSoN file to be used by HW layer
     if args.verbose:
         print("Writing generated output file: {0}\n".format(args.out))
 
-    rw_json.write_json_file(rf_classifier_params, args.out)
+    rw_json.write_json_file(params, args.out)
 
 
 if __name__ == "__main__":
