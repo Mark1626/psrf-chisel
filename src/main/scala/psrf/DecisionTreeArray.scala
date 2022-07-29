@@ -10,16 +10,21 @@ case class DecisionTreeArrayParams(
   numClasses:            Int,
   numFeatures:           Int,
   fixedPointWidth:       Int,
-  fixedPointBinaryPoint: Int) {
+  fixedPointBinaryPoint: Int,
+  treesLit:              Seq[Seq[DecisionTreeNodeLit]]) {
   require(numNodes.length == numTrees, "Number of numNodes provided does not match number of trees")
 
   // TODO Fix unnecessary recalculation of classIndexWidth
   val classIndexWidth = log2Ceil(numClasses)
   val decisionTreeParams =
     numNodes.map(n => DecisionTreeParams(numFeatures, n, numClasses, fixedPointWidth, fixedPointBinaryPoint))
+  val trees =
+    treesLit.zip(decisionTreeParams).map { case (tree, param) =>
+      tree.map(node => decisionTreeNodeLitToChiselType(node, param))
+    }
 }
 
-class DecisionTreeArraySimple(p: DecisionTreeArrayParams, trees: Seq[Seq[DecisionTreeNode]]) extends Module {
+class DecisionTreeArraySimple(p: DecisionTreeArrayParams) extends Module {
   import p._
   require(trees.length == numTrees, "Number of tree ROMs provided does not match number of trees")
 

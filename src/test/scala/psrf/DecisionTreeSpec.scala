@@ -11,6 +11,8 @@ import org.scalatest.matchers.should.Matchers
 import psrf.DecisionTree
 import psrf.DecisionTreeNode
 import psrf.DecisionTreeParams
+import psrf.DecisionTreeNodeLit
+import psrf.decisionTreeNodeLitToChiselType
 
 class DecisionTreeSpec extends AnyFlatSpec with ChiselScalatestTester with Matchers {
   def decisionTreeSingleTest(
@@ -90,7 +92,8 @@ class DecisionTreeSpec extends AnyFlatSpec with ChiselScalatestTester with Match
   }
 
   it should "got to right node and give correct decision" in {
-    val p = DecisionTreeParams(numFeatures = 2, numNodes = 3, numClasses = 2, fixedPointWidth = 5, fixedPointBinaryPoint = 2)
+    val p =
+      DecisionTreeParams(numFeatures = 2, numNodes = 3, numClasses = 2, fixedPointWidth = 5, fixedPointBinaryPoint = 2)
     val inTree = Seq(
       DecisionTreeNodeLit(
         isLeafNode = false,
@@ -120,7 +123,8 @@ class DecisionTreeSpec extends AnyFlatSpec with ChiselScalatestTester with Match
   }
 
   it should "be able to traverse a tree with five nodes and give correct decision" in {
-    val p = DecisionTreeParams(numFeatures = 2, numNodes = 5, numClasses = 2, fixedPointWidth = 5, fixedPointBinaryPoint = 2)
+    val p =
+      DecisionTreeParams(numFeatures = 2, numNodes = 5, numClasses = 2, fixedPointWidth = 5, fixedPointBinaryPoint = 2)
     val inTree = Seq(
       DecisionTreeNodeLit(
         isLeafNode = false,
@@ -164,7 +168,8 @@ class DecisionTreeSpec extends AnyFlatSpec with ChiselScalatestTester with Match
   }
 
   it should "give correct decision for multiple candidates" in {
-    val p = DecisionTreeParams(numFeatures = 2, numNodes = 3, numClasses = 2, fixedPointWidth = 5, fixedPointBinaryPoint = 2)
+    val p =
+      DecisionTreeParams(numFeatures = 2, numNodes = 3, numClasses = 2, fixedPointWidth = 5, fixedPointBinaryPoint = 2)
     val inTree = Seq(
       DecisionTreeNodeLit(
         isLeafNode = false,
@@ -194,7 +199,8 @@ class DecisionTreeSpec extends AnyFlatSpec with ChiselScalatestTester with Match
   }
 
   it should "keep output decision valid until it is consumed" in {
-    val p = DecisionTreeParams(numFeatures = 2, numNodes = 3, numClasses = 2, fixedPointWidth = 5, fixedPointBinaryPoint = 2)
+    val p =
+      DecisionTreeParams(numFeatures = 2, numNodes = 3, numClasses = 2, fixedPointWidth = 5, fixedPointBinaryPoint = 2)
     val inTree = Seq(
       DecisionTreeNodeLit(
         isLeafNode = false,
