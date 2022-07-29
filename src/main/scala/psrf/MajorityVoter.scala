@@ -18,7 +18,7 @@ abstract class MajorityVoterModule(numTrees: Int, numClasses: Int) extends Modul
 
 class MajorityVoterArea(numTrees: Int, numClasses: Int) extends MajorityVoterModule(numTrees, numClasses) {
   if (numClasses == 2) {
-    val countWidth     = log2Ceil(numTrees)
+    val countWidth     = log2Ceil(numTrees) + 1
     val countThreshold = math.ceil(numTrees.toDouble / 2).toInt.U(countWidth.W)
 
     val pipeEnq   = Wire(Decoupled(UInt(countWidth.W)))
@@ -34,7 +34,7 @@ class MajorityVoterArea(numTrees: Int, numClasses: Int) extends MajorityVoterMod
 
     if (numTrees % 2 == 0) {
       io.out.bits.classification  := pipeQueue.bits > countThreshold
-      io.out.bits.noClearMajority := pipeEnq.bits === countThreshold
+      io.out.bits.noClearMajority := pipeQueue.bits === countThreshold
     } else {
       io.out.bits.classification  := pipeQueue.bits >= countThreshold
       io.out.bits.noClearMajority := false.B

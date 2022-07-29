@@ -32,7 +32,7 @@ class MajorityVoterSpec extends AnyFlatSpec with ChiselScalatestTester with Matc
       while (dut.io.out.valid.peek().litValue == 0) dut.clock.step()
       dut.io.out.bits.classification.expect(expectedClassification.U)
       if (expectedNoClearMajority.isDefined) {
-        dut.io.out.bits.noClearMajority.expect(expectedClassification.U)
+        dut.io.out.bits.noClearMajority.expect(expectedNoClearMajority.get.B)
       }
     }
   }
