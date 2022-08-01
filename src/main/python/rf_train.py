@@ -1,13 +1,11 @@
 import numpy as np
-from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn import tree
 
 
 def train_rf_classifier(
-    input_data,
-    target_data,
-    train_split_size=None,
+    input_train_data,
+    target_train_data,
     n_estimators=None,
     criterion=None,
     max_depth=None,
@@ -15,17 +13,8 @@ def train_rf_classifier(
     n_jobs=None,
     verbose=True,
 ):
-    train_split = 0.7 if train_split_size is None else train_split_size
     n_estimators = 100 if n_estimators is None else n_estimators
     criterion = "gini" if criterion is None else criterion
-
-    input_train, input_test, target_train, target_test = train_test_split(
-        input_data, target_data, train_size=train_split_size
-    )
-
-    if verbose:
-        print("Number of samples for training = {0}".format(len(input_train)))
-        print("Number of samples for testing = {0}\n".format(len(input_test)))
 
     rf_classifier = RandomForestClassifier(
         n_estimators=n_estimators,
@@ -37,7 +26,7 @@ def train_rf_classifier(
 
     print("Training the random forest classifier...\n")
 
-    rf_classifier.fit(input_train, target_train)
+    rf_classifier.fit(input_train_data, target_train_data)
 
     if verbose:
         print_rf_classifier_params(rf_classifier)

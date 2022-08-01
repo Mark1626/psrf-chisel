@@ -3,9 +3,10 @@
     "train_split_size": 0.7,
     "n_estimators": 4,
     "max_leaf_nodes": 3,
-    "to_hw_stage": {
+    "build_type": "test",
+    "passthrough": {
         "fixed_point_width": 8,
         "fixed_point_bp": 4,
-        "majority_voter_type": "area"
+        "opt_majority_voter": "area"
     }
 }
