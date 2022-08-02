@@ -6,15 +6,13 @@ from sklearn import tree
 def train_rf_classifier(
     input_train_data,
     target_train_data,
-    n_estimators=None,
-    criterion=None,
+    n_estimators,
+    criterion,
+    max_leaf_nodes,
     max_depth=None,
-    max_leaf_nodes=None,
     n_jobs=None,
     verbose=True,
 ):
-    n_estimators = 100 if n_estimators is None else n_estimators
-    criterion = "gini" if criterion is None else criterion
 
     rf_classifier = RandomForestClassifier(
         n_estimators=n_estimators,

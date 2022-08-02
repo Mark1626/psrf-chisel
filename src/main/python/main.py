@@ -6,6 +6,7 @@ import argparse
 
 import rf_train
 import rw_json
+import constants as cn
 
 
 def main(args):
@@ -33,8 +34,7 @@ def main(args):
         exit(1)
 
     # Split dataset into training and testing subsets
-    train_split_size = config.get("train_split_size")
-    train_split = 0.7 if train_split_size is None else train_split_size
+    train_split_size = config.get("train_split_size", cn.DEFAULT_TRAIN_SPLIT_SIZE)
 
     input_train, input_test, target_train, target_test = train_test_split(
         input_data, target_data, train_size=train_split_size
@@ -48,15 +48,18 @@ def main(args):
     rf_classifier = rf_train.train_rf_classifier(
         input_train_data=input_train,
         target_train_data=target_train,
-        n_estimators=config.get("n_estimators"),
-        criterion=config.get("criterion"),
+        n_estimators=config.get("n_estimators", cn.DEFAULT_N_ESTIMATORS),
+        criterion=config.get("criterion", cn.DEFAULT_CRITERION),
+        max_leaf_nodes=config.get("max_leaf_nodes", cn.DEFAULT_MAX_LEAF_NODES),
         max_depth=config.get("max_depth"),
-        max_leaf_nodes=config.get("max_leaf_nodes"),
         n_jobs=config.get("n_jobs"),
         verbose=args.verbose,
     )
 
+    # Predict expected test output with test data
     pred_test = rf_classifier.predict(input_test)
+
+    # Calculate accuracy of trained classifier
     if args.verbose:
         print("Calculating accuracy of trained Random Forest Classifier...")
 
@@ -66,22 +69,19 @@ def main(args):
     # Extract necessary data and parameters from the trained random forest
     # classifier to be tranmitted to HW stage
     params = rf_train.extract_rf_classifier_params(rf_classifier)
-    to_hw_stage_params = config.get("to_hw_stage")
-    if to_hw_stage_params:
-        params.update(to_hw_stage_params)
+    passthrough_params = config.get("passthrough")
+    if passthrough_params:
+        params.update(passthrough_params)
 
-    # Predict expected test output with test data
-    build_type = config.get("build_type")
-    if build_type:
-        if build_type == "test":
-            params["test_candidates"] = input_test.tolist()
-            params["expected_classifications"] = pred_test.tolist()
-        else:
-            print("Unsupported build type: {0}\n".format(build_type))
-            exit(1)
-        params["build_type"] = build_type
+    build_type = config.get("build_type", cn.DEFAULT_BUILD_TYPE)
+    if build_type == "test":
+        params["test_candidates"] = input_test.tolist()
+        params["expected_classifications"] = pred_test.tolist()
     else:
-        raise KeyError("Build type option not found")
+        print("Unsupported build type: {0}\n".format(build_type))
+        exit(1)
+
+    params["build_type"] = build_type
 
     # Write output JSoN file to be used by HW layer
     if args.verbose:

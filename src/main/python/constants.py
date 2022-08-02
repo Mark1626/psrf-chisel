@@ -1,0 +1,6 @@
+# Defaults for input config parameters
+DEFAULT_TRAIN_SPLIT_SIZE = 0.7
+DEFAULT_N_ESTIMATORS = 100
+DEFAULT_CRITERION = "gini"
+DEFAULT_MAX_LEAF_NODES = None
+DEFAULT_BUILD_TYPE = "test"
