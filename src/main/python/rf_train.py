@@ -34,7 +34,6 @@ def train_rf_classifier(
 
 def extract_rf_classifier_params(rf_classifier):
     tree_objects = []
-    num_nodes = []
     for i in range(0, rf_classifier.n_estimators):
         tree = rf_classifier.estimators_[i].tree_
         classes = [int(np.argmax(val)) for val in tree.value]
@@ -48,14 +47,12 @@ def extract_rf_classifier_params(rf_classifier):
             "children_right": list(map(int, tree.children_right)),
         }
         tree_objects.append(tree_object)
-        num_nodes.append(tree.node_count)
 
     rf_classifier_params = {
         "num_features": rf_classifier.n_features_,
         "num_classes": rf_classifier.n_classes_,
         "class_labels": list(map(int, rf_classifier.classes_)),
         "num_trees": rf_classifier.n_estimators,
-        "num_nodes": num_nodes,
         "trees": tree_objects,
     }
 

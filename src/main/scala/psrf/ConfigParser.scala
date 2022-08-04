@@ -11,7 +11,6 @@ case class HWStageConfig(
   numFeatures:             Int,
   numClasses:              Int,
   numTrees:                Int,
-  numNodes:                List[Int],
   treeLiterals:            List[List[DecisionTreeNodeLit]],
   fixedPointWidth:         Int,
   fixedPointBinaryPoint:   Int,
@@ -51,7 +50,6 @@ object HWStageConfig {
           numFeatures           <- hCursor.get[Int]("num_features")
           numClasses            <- hCursor.get[Int]("num_classes")
           numTrees              <- hCursor.get[Int]("num_trees")
-          numNodes              <- hCursor.get[List[Int]]("num_nodes")
           treeLiterals          <- hCursor.get[List[List[DecisionTreeNodeLit]]]("trees")
           fixedPointWidth       <- hCursor.get[Int]("fixed_point_width")
           fixedPointBinaryPoint <- hCursor.get[Int]("fixed_point_bp")
@@ -83,7 +81,6 @@ object HWStageConfig {
             numFeatures,
             numClasses,
             numTrees,
-            numNodes,
             treeLiterals,
             fixedPointWidth,
             fixedPointBinaryPoint,
