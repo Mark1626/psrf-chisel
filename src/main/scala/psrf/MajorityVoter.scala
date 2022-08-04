@@ -2,21 +2,27 @@ package psrf
 
 import chisel3._
 import chisel3.util._
+import config.{Field, Parameters}
 
-class MajorityVoterOut(classIndexWidth: Int) extends Bundle {
+trait HasMajorityVoterParameters extends HasRandomForestParameters
+
+class MajorityVoterBundle(implicit val p: Parameters) extends Bundle with HasMajorityVoterParameters
+
+class MajorityVoterOut(implicit p: Parameters) extends MajorityVoterBundle {
   val classification  = UInt(classIndexWidth.W)
   val noClearMajority = Bool()
 }
 
-abstract class MajorityVoterModule(numTrees: Int, numClasses: Int) extends Module {
-  val classIndexWidth = log2Ceil(numClasses)
-  val io = IO(new Bundle {
-    val in  = Flipped(Decoupled(Vec(numTrees, UInt(classIndexWidth.W))))
-    val out = Irrevocable(new MajorityVoterOut(classIndexWidth))
-  })
+class MajorityVoterIO(implicit p: Parameters) extends MajorityVoterBundle {
+  val in  = Flipped(Decoupled(Vec(numTrees, UInt(classIndexWidth.W))))
+  val out = Irrevocable(new MajorityVoterOut()(p))
 }
 
-class MajorityVoterArea(numTrees: Int, numClasses: Int) extends MajorityVoterModule(numTrees, numClasses) {
+abstract class MajorityVoterModule(implicit val p: Parameters) extends Module with HasRandomForestParameters {
+  val io = IO(new MajorityVoterIO()(p))
+}
+
+class MajorityVoterArea(implicit p: Parameters) extends MajorityVoterModule {
   if (numClasses == 2) {
     val countWidth     = log2Ceil(numTrees) + 1
     val countThreshold = math.ceil(numTrees.toDouble / 2).toInt.U(countWidth.W)

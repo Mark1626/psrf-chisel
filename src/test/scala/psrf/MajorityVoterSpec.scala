@@ -9,6 +9,9 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import psrf.MajorityVoterArea
 import psrf.MajorityVoterOut
+import psrf.DefaultConfig
+import psrf.NumTrees
+import psrf.NumClasses
 
 class MajorityVoterSpec extends AnyFlatSpec with ChiselScalatestTester with Matchers {
   def majorityVoterSingleTest(
@@ -19,10 +22,15 @@ class MajorityVoterSpec extends AnyFlatSpec with ChiselScalatestTester with Matc
     expectedNoClearMajority: Option[Boolean] = None
   ): Unit = {
     val annos = Seq(WriteVcdAnnotation, VerilatorBackendAnnotation)
-
+    val p = (new DefaultConfig).alterMap(
+      Map(
+        NumTrees   -> numTrees,
+        NumClasses -> numClasses
+      )
+    )
     val decisions = Vec.Lit(inDecisions.map(_.U): _*)
 
-    test(new MajorityVoterArea(numTrees, numClasses)).withAnnotations(annos) { dut =>
+    test(new MajorityVoterArea()(p)).withAnnotations(annos) { dut =>
       dut.io.in.valid.poke(false.B)
       dut.io.in.ready.expect(true.B)
       dut.clock.step()
@@ -45,15 +53,18 @@ class MajorityVoterSpec extends AnyFlatSpec with ChiselScalatestTester with Matc
     expectedNoClearMajority: Seq[Boolean]
   ): Unit = {
     val annos = Seq(WriteVcdAnnotation)
-
+    val p = (new DefaultConfig).alterMap(
+      Map(
+        NumTrees   -> numTrees,
+        NumClasses -> numClasses
+      )
+    )
     val decisions = inDecisions.map(d => Vec.Lit(d.map(_.U): _*))
     val expected = expectedClassifications
       .zip(expectedNoClearMajority)
-      .map(x =>
-        (new MajorityVoterOut(log2Ceil(numClasses))).Lit(_.classification -> x._1.U, _.noClearMajority -> x._2.B)
-      )
+      .map(x => (new MajorityVoterOut()(p)).Lit(_.classification -> x._1.U, _.noClearMajority -> x._2.B))
 
-    test(new MajorityVoterArea(numTrees, numClasses)).withAnnotations(annos) { dut =>
+    test(new MajorityVoterArea()(p)).withAnnotations(annos) { dut =>
       dut.io.in.initSource()
       dut.io.in.setSourceClock(dut.clock)
       dut.io.out.initSink()
@@ -99,10 +110,16 @@ class MajorityVoterSpec extends AnyFlatSpec with ChiselScalatestTester with Matc
     val expectedClassification  = 1
     val expectedNoClearMajority = false
 
-    val annos     = Seq(WriteVcdAnnotation)
+    val annos = Seq(WriteVcdAnnotation)
+    val p = (new DefaultConfig).alterMap(
+      Map(
+        NumTrees   -> numTrees,
+        NumClasses -> numClasses
+      )
+    )
     val decisions = Vec.Lit(inDecisions.map(_.U): _*)
 
-    test(new MajorityVoterArea(numTrees, numClasses)).withAnnotations(annos) { dut =>
+    test(new MajorityVoterArea()(p)).withAnnotations(annos) { dut =>
       dut.io.in.valid.poke(false.B)
       dut.io.in.ready.expect(true.B)
       dut.clock.step()

@@ -3,37 +3,34 @@ package psrf
 import chisel3._
 import chisel3.util._
 import chisel3.experimental.FixedPoint
+import config.{Field, Parameters}
 
-case class DecisionTreeArrayParams(
-  numTrees:              Int,
-  numNodes:              Seq[Int],
-  numClasses:            Int,
-  numFeatures:           Int,
-  fixedPointWidth:       Int,
-  fixedPointBinaryPoint: Int,
-  treesLit:              Seq[Seq[DecisionTreeNodeLit]]) {
-  require(numNodes.length == numTrees, "Number of numNodes provided does not match number of trees")
+case object TreeLiterals extends Field[List[List[DecisionTreeNodeLit]]]
 
-  // TODO Fix unnecessary recalculation of classIndexWidth
-  val classIndexWidth = log2Ceil(numClasses)
-  val decisionTreeParams =
-    numNodes.map(n => DecisionTreeParams(numFeatures, n, numClasses, fixedPointWidth, fixedPointBinaryPoint))
-  val trees =
-    treesLit.zip(decisionTreeParams).map { case (tree, param) =>
-      tree.map(node => decisionTreeNodeLitToChiselType(node, param))
-    }
+trait HasDecisionTreeArrayParameters extends HasRandomForestParameters {
+  val treeLiterals = p(TreeLiterals)
 }
 
-class DecisionTreeArraySimple(p: DecisionTreeArrayParams) extends Module {
+class DecisionTreeArraySimple(implicit val p: Parameters) extends Module with HasDecisionTreeArrayParameters {
   import p._
-  require(trees.length == numTrees, "Number of tree ROMs provided does not match number of trees")
+  require(treeLiterals.length == numTrees, "Number of tree ROMs provided does not match number of trees")
 
   val io = IO(new Bundle {
     val in  = Flipped(Decoupled(Vec(numFeatures, FixedPoint(fixedPointWidth.W, fixedPointBinaryPoint.BP))))
     val out = Irrevocable(Vec(numTrees, UInt(classIndexWidth.W)))
   })
 
-  val decisionTrees = (0 until numTrees).map(i => DecisionTree(trees(i), decisionTreeParams(i)))
+  val decisionTrees = treeLiterals.map(tl =>
+    Module(
+      new DecisionTree()(
+        p.alterMap(
+          Map(
+            TreeLiteral -> tl
+          )
+        )
+      )
+    )
+  )
 
   io.in.ready  := decisionTrees.foldLeft(true.B) { (r, tree) => WireDefault(r & tree.io.in.ready) }
   io.out.valid := decisionTrees.foldLeft(true.B) { (v, tree) => WireDefault(v & tree.io.out.valid) }

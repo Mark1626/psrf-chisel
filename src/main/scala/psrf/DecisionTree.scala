@@ -3,36 +3,57 @@ package psrf
 import chisel3._
 import chisel3.util._
 import chisel3.experimental.FixedPoint
+import chisel3.experimental.BundleLiterals._
+import config.{Field, Parameters}
 
-case class DecisionTreeParams(
-  numFeatures:           Int,
-  numNodes:              Int,
-  numClasses:            Int,
-  fixedPointWidth:       Int,
-  fixedPointBinaryPoint: Int) {
+case object TreeLiteral extends Field[List[DecisionTreeNodeLit]](Nil)
+
+trait HasDecisionTreeParameters extends HasRandomForestParameters {
+  val treeLiteral       = p(TreeLiteral)
+  val numNodes          = treeLiteral.length
   val nodeAddrWidth     = log2Ceil(numNodes)
   val featureIndexWidth = log2Ceil(numFeatures)
-  // TODO Fix unnecessary recalculation of classIndexWidth
-  val classIndexWidth = log2Ceil(numClasses)
+
+  def featureClassIndexWidth = math.max(featureIndexWidth, classIndexWidth)
+  def treeBundleSeq          = treeLiteral.map(DecisionTreeNode(_, p))
 }
 
-class DecisionTreeNode(p: DecisionTreeParams) extends Bundle {
-  import p._
+case class DecisionTreeNodeLit(
+  isLeafNode:        Boolean,
+  featureClassIndex: Int,
+  threshold:         Double,
+  rightNode:         Int,
+  leftNode:          Int)
+
+class DecisionTreeNode(implicit val p: Parameters) extends Bundle with HasDecisionTreeParameters {
   val isLeafNode        = Bool()
-  val featureClassIndex = UInt(math.max(featureIndexWidth, classIndexWidth).W)
+  val featureClassIndex = UInt()
   val threshold         = FixedPoint(fixedPointWidth.W, fixedPointBinaryPoint.BP)
   val rightNode         = UInt(nodeAddrWidth.W)
   val leftNode          = UInt(nodeAddrWidth.W)
 }
 
-class DecisionTree(tree: Seq[DecisionTreeNode], p: DecisionTreeParams) extends Module {
+object DecisionTreeNode {
+  def apply(n: DecisionTreeNodeLit, p: Parameters): DecisionTreeNode = {
+    // TODO Fix this hack
+    val dtb = new DecisionTreeNode()(p)
+    (new DecisionTreeNode()(p)).Lit(
+      _.isLeafNode        -> n.isLeafNode.B,
+      _.featureClassIndex -> n.featureClassIndex.U(dtb.featureClassIndexWidth.W),
+      _.threshold         -> FixedPoint.fromDouble(n.threshold, dtb.fixedPointWidth.W, dtb.fixedPointBinaryPoint.BP),
+      _.rightNode         -> n.rightNode.U(dtb.nodeAddrWidth.W),
+      _.leftNode          -> n.leftNode.U(dtb.nodeAddrWidth.W)
+    )
+  }
+}
+class DecisionTree(implicit val p: Parameters) extends Module with HasDecisionTreeParameters {
   import p._
   val io = IO(new Bundle {
     val in  = Flipped(Decoupled(Vec(numFeatures, FixedPoint(fixedPointWidth.W, fixedPointBinaryPoint.BP))))
     val out = Irrevocable(UInt(classIndexWidth.W))
   })
 
-  val decisionTreeRom = VecInit(tree)
+  val decisionTreeRom = VecInit(treeBundleSeq)
 
   val idle :: busy :: done :: Nil = Enum(3)
 
@@ -41,7 +62,7 @@ class DecisionTree(tree: Seq[DecisionTreeNode], p: DecisionTreeParams) extends M
   val rest  = io.out.valid & io.out.ready
 
   val candidate = Reg(Vec(numFeatures, FixedPoint(fixedPointWidth.W, fixedPointBinaryPoint.BP)))
-  val node      = Reg(new DecisionTreeNode(p))
+  val node      = Reg(new DecisionTreeNode()(p))
   val nodeAddr  = WireDefault(0.U(nodeAddrWidth.W))
   val decision  = WireDefault(false.B)
 
@@ -76,12 +97,4 @@ class DecisionTree(tree: Seq[DecisionTreeNode], p: DecisionTreeParams) extends M
       state := idle
     }
   }
-}
-
-object DecisionTree {
-  def apply(tree: Seq[DecisionTreeNode], p: DecisionTreeParams): DecisionTree = {
-    Module(new DecisionTree(tree, p))
-  }
-
-  // TODO Add factory method to construct DecisionTree where numNodes parameter is based on the length of the input tree sequence
 }

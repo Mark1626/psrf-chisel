@@ -8,24 +8,22 @@ import chiseltest.simulator.VerilatorBackendAnnotation
 import chiseltest.simulator.WriteVcdAnnotation
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import psrf.DecisionTree
-import psrf.DecisionTreeNode
-import psrf.DecisionTreeParams
-import psrf.DecisionTreeNodeLit
-import psrf.decisionTreeNodeLitToChiselType
+import psrf._
+import psrf.config.{Config, Parameters}
 
 class DecisionTreeSpec extends AnyFlatSpec with ChiselScalatestTester with Matchers {
   def decisionTreeSingleTest(
-    p:                DecisionTreeParams,
-    inTree:           Seq[DecisionTreeNodeLit],
+    p:                Parameters,
     inCandidate:      Seq[Double],
     expectedDecision: Int
   ): Unit = {
-    val annos     = Seq(WriteVcdAnnotation)
-    val tree      = inTree.map(n => decisionTreeNodeLitToChiselType(n, p))
-    val candidate = inCandidate.asFixedPointVecLit(p.fixedPointWidth.W, p.fixedPointBinaryPoint.BP)
+    val annos = Seq(WriteVcdAnnotation)
+    val candidate = inCandidate.asFixedPointVecLit(
+      p(FixedPointWidth).W,
+      p(FixedPointBinaryPoint).BP
+    )
 
-    test(new DecisionTree(tree, p)).withAnnotations(annos) { dut =>
+    test(new DecisionTree()(p)).withAnnotations(annos) { dut =>
       dut.io.in.valid.poke(false.B)
       dut.io.in.ready.expect(true.B)
       dut.clock.step()
@@ -38,16 +36,14 @@ class DecisionTreeSpec extends AnyFlatSpec with ChiselScalatestTester with Match
   }
 
   def decisionTreeSeqTest(
-    p:                 DecisionTreeParams,
-    inTree:            Seq[DecisionTreeNodeLit],
+    p:                 Parameters,
     inCandidates:      Seq[Seq[Double]],
     expectedDecisions: Seq[Int]
   ): Unit = {
     val annos      = Seq(WriteVcdAnnotation)
-    val tree       = inTree.map(n => decisionTreeNodeLitToChiselType(n, p))
-    val candidates = inCandidates.map(x => x.asFixedPointVecLit(p.fixedPointWidth.W, p.fixedPointBinaryPoint.BP))
+    val candidates = inCandidates.map(x => x.asFixedPointVecLit(p(FixedPointWidth).W, p(FixedPointBinaryPoint).BP))
 
-    test(new DecisionTree(tree, p)).withAnnotations(annos) { dut =>
+    test(new DecisionTree()(p)).withAnnotations(annos) { dut =>
       dut.io.in.initSource()
       dut.io.in.setSourceClock(dut.clock)
       dut.io.out.initSink()
@@ -61,176 +57,205 @@ class DecisionTreeSpec extends AnyFlatSpec with ChiselScalatestTester with Match
   }
 
   it should "got to left node and give correct decision" in {
-    val p =
-      DecisionTreeParams(numFeatures = 2, numNodes = 3, numClasses = 2, fixedPointWidth = 5, fixedPointBinaryPoint = 2)
-    val inTree = Seq(
-      DecisionTreeNodeLit(
-        isLeafNode = false,
-        featureClassIndex = 0,
-        threshold = 1,
-        rightNode = 2,
-        leftNode = 1
-      ), // Root node
-      DecisionTreeNodeLit(
-        isLeafNode = true,
-        featureClassIndex = 1,
-        threshold = 2,
-        rightNode = 0,
-        leftNode = 0
-      ), // Left node
-      DecisionTreeNodeLit(
-        isLeafNode = true,
-        featureClassIndex = 0,
-        threshold = 2,
-        rightNode = 0,
-        leftNode = 0
-      ) // Right node
-    )
+    val p = new Config((site, here, up) => {
+      case NumFeatures           => 2
+      case NumClasses            => 2
+      case NumTrees              => 1
+      case FixedPointWidth       => 5
+      case FixedPointBinaryPoint => 2
+      case TreeLiteral =>
+        List(
+          DecisionTreeNodeLit(
+            isLeafNode = false,
+            featureClassIndex = 0,
+            threshold = 1,
+            rightNode = 2,
+            leftNode = 1
+          ), // Root node
+          DecisionTreeNodeLit(
+            isLeafNode = true,
+            featureClassIndex = 1,
+            threshold = 2,
+            rightNode = 0,
+            leftNode = 0
+          ), // Left node
+          DecisionTreeNodeLit(
+            isLeafNode = true,
+            featureClassIndex = 0,
+            threshold = 2,
+            rightNode = 0,
+            leftNode = 0
+          ) // Right node
+        )
+    })
     val inCandidate      = Seq(0.5, 2)
     val expectedDecision = 1
-    decisionTreeSingleTest(p, inTree, inCandidate, expectedDecision)
+    decisionTreeSingleTest(p, inCandidate, expectedDecision)
   }
 
   it should "got to right node and give correct decision" in {
-    val p =
-      DecisionTreeParams(numFeatures = 2, numNodes = 3, numClasses = 2, fixedPointWidth = 5, fixedPointBinaryPoint = 2)
-    val inTree = Seq(
-      DecisionTreeNodeLit(
-        isLeafNode = false,
-        featureClassIndex = 1,
-        threshold = 1,
-        rightNode = 2,
-        leftNode = 1
-      ), // Root node
-      DecisionTreeNodeLit(
-        isLeafNode = true,
-        featureClassIndex = 1,
-        threshold = 2,
-        rightNode = 0,
-        leftNode = 0
-      ), // Left node
-      DecisionTreeNodeLit(
-        isLeafNode = true,
-        featureClassIndex = 0,
-        threshold = 2,
-        rightNode = 0,
-        leftNode = 0
-      ) // Right node
-    )
+    val p = new Config((site, here, up) => {
+      case NumFeatures           => 2
+      case NumClasses            => 2
+      case NumTrees              => 1
+      case FixedPointWidth       => 5
+      case FixedPointBinaryPoint => 2
+      case TreeLiteral =>
+        List(
+          DecisionTreeNodeLit(
+            isLeafNode = false,
+            featureClassIndex = 1,
+            threshold = 1,
+            rightNode = 2,
+            leftNode = 1
+          ), // Root node
+          DecisionTreeNodeLit(
+            isLeafNode = true,
+            featureClassIndex = 1,
+            threshold = 2,
+            rightNode = 0,
+            leftNode = 0
+          ), // Left node
+          DecisionTreeNodeLit(
+            isLeafNode = true,
+            featureClassIndex = 0,
+            threshold = 2,
+            rightNode = 0,
+            leftNode = 0
+          ) // Right node
+        )
+    })
     val inCandidate      = Seq(0.5, 2)
     val expectedDecision = 0
-    decisionTreeSingleTest(p, inTree, inCandidate, expectedDecision)
+    decisionTreeSingleTest(p, inCandidate, expectedDecision)
   }
 
   it should "be able to traverse a tree with five nodes and give correct decision" in {
-    val p =
-      DecisionTreeParams(numFeatures = 2, numNodes = 5, numClasses = 2, fixedPointWidth = 5, fixedPointBinaryPoint = 2)
-    val inTree = Seq(
-      DecisionTreeNodeLit(
-        isLeafNode = false,
-        featureClassIndex = 0,
-        threshold = 1,
-        rightNode = 2,
-        leftNode = 1
-      ), // Root node
-      DecisionTreeNodeLit(
-        isLeafNode = false,
-        featureClassIndex = 1,
-        threshold = 2,
-        rightNode = 4,
-        leftNode = 3
-      ), // Left node
-      DecisionTreeNodeLit(
-        isLeafNode = true,
-        featureClassIndex = 0,
-        threshold = 2,
-        rightNode = 0,
-        leftNode = 0
-      ), // Right node
-      DecisionTreeNodeLit(
-        isLeafNode = true,
-        featureClassIndex = 1,
-        threshold = 2,
-        rightNode = 0,
-        leftNode = 0
-      ), // Left Left node
-      DecisionTreeNodeLit(
-        isLeafNode = true,
-        featureClassIndex = 0,
-        threshold = 2,
-        rightNode = 0,
-        leftNode = 0
-      ) // Left Right node
-    )
+    val p = new Config((site, here, up) => {
+      case NumFeatures           => 2
+      case NumClasses            => 2
+      case NumTrees              => 1
+      case FixedPointWidth       => 5
+      case FixedPointBinaryPoint => 2
+      case TreeLiteral =>
+        List(
+          DecisionTreeNodeLit(
+            isLeafNode = false,
+            featureClassIndex = 0,
+            threshold = 1,
+            rightNode = 2,
+            leftNode = 1
+          ), // Root node
+          DecisionTreeNodeLit(
+            isLeafNode = false,
+            featureClassIndex = 1,
+            threshold = 2,
+            rightNode = 4,
+            leftNode = 3
+          ), // Left node
+          DecisionTreeNodeLit(
+            isLeafNode = true,
+            featureClassIndex = 0,
+            threshold = 2,
+            rightNode = 0,
+            leftNode = 0
+          ), // Right node
+          DecisionTreeNodeLit(
+            isLeafNode = true,
+            featureClassIndex = 1,
+            threshold = 2,
+            rightNode = 0,
+            leftNode = 0
+          ), // Left Left node
+          DecisionTreeNodeLit(
+            isLeafNode = true,
+            featureClassIndex = 0,
+            threshold = 2,
+            rightNode = 0,
+            leftNode = 0
+          ) // Left Right node
+        )
+    })
     val inCandidate      = Seq(0.5, 2.5)
     val expectedDecision = 0
-    decisionTreeSingleTest(p, inTree, inCandidate, expectedDecision)
+    decisionTreeSingleTest(p, inCandidate, expectedDecision)
   }
 
   it should "give correct decision for multiple candidates" in {
-    val p =
-      DecisionTreeParams(numFeatures = 2, numNodes = 3, numClasses = 2, fixedPointWidth = 5, fixedPointBinaryPoint = 2)
-    val inTree = Seq(
-      DecisionTreeNodeLit(
-        isLeafNode = false,
-        featureClassIndex = 0,
-        threshold = 1,
-        rightNode = 2,
-        leftNode = 1
-      ), // Root node
-      DecisionTreeNodeLit(
-        isLeafNode = true,
-        featureClassIndex = 1,
-        threshold = 2,
-        rightNode = 0,
-        leftNode = 0
-      ), // Left node
-      DecisionTreeNodeLit(
-        isLeafNode = true,
-        featureClassIndex = 0,
-        threshold = 2,
-        rightNode = 0,
-        leftNode = 0
-      ) // Right node
-    )
+    val p = new Config((site, here, up) => {
+      case NumFeatures           => 2
+      case NumClasses            => 2
+      case NumTrees              => 1
+      case FixedPointWidth       => 5
+      case FixedPointBinaryPoint => 2
+      case TreeLiteral =>
+        List(
+          DecisionTreeNodeLit(
+            isLeafNode = false,
+            featureClassIndex = 0,
+            threshold = 1,
+            rightNode = 2,
+            leftNode = 1
+          ), // Root node
+          DecisionTreeNodeLit(
+            isLeafNode = true,
+            featureClassIndex = 1,
+            threshold = 2,
+            rightNode = 0,
+            leftNode = 0
+          ), // Left node
+          DecisionTreeNodeLit(
+            isLeafNode = true,
+            featureClassIndex = 0,
+            threshold = 2,
+            rightNode = 0,
+            leftNode = 0
+          ) // Right node
+        )
+    })
     val inCandidates      = Seq(Seq(0.5, 2), Seq(2, 0.5), Seq(1, 0.5), Seq(1.5, 1))
     val expectedDecisions = Seq(1, 0, 1, 0)
-    decisionTreeSeqTest(p, inTree, inCandidates, expectedDecisions)
+    decisionTreeSeqTest(p, inCandidates, expectedDecisions)
   }
 
   it should "keep output decision valid until it is consumed" in {
-    val p =
-      DecisionTreeParams(numFeatures = 2, numNodes = 3, numClasses = 2, fixedPointWidth = 5, fixedPointBinaryPoint = 2)
-    val inTree = Seq(
-      DecisionTreeNodeLit(
-        isLeafNode = false,
-        featureClassIndex = 0,
-        threshold = 1,
-        rightNode = 2,
-        leftNode = 1
-      ), // Root node
-      DecisionTreeNodeLit(
-        isLeafNode = true,
-        featureClassIndex = 1,
-        threshold = 2,
-        rightNode = 0,
-        leftNode = 0
-      ), // Left node
-      DecisionTreeNodeLit(
-        isLeafNode = true,
-        featureClassIndex = 0,
-        threshold = 2,
-        rightNode = 0,
-        leftNode = 0
-      ) // Right node
-    )
+    val p = new Config((site, here, up) => {
+      case NumFeatures           => 2
+      case NumClasses            => 2
+      case NumTrees              => 1
+      case FixedPointWidth       => 5
+      case FixedPointBinaryPoint => 2
+      case TreeLiteral =>
+        List(
+          DecisionTreeNodeLit(
+            isLeafNode = false,
+            featureClassIndex = 0,
+            threshold = 1,
+            rightNode = 2,
+            leftNode = 1
+          ), // Root node
+          DecisionTreeNodeLit(
+            isLeafNode = true,
+            featureClassIndex = 1,
+            threshold = 2,
+            rightNode = 0,
+            leftNode = 0
+          ), // Left node
+          DecisionTreeNodeLit(
+            isLeafNode = true,
+            featureClassIndex = 0,
+            threshold = 2,
+            rightNode = 0,
+            leftNode = 0
+          ) // Right node
+        )
+    })
     val inCandidate      = Seq(2d, 3d)
     val expectedDecision = 0
     val annos            = Seq(WriteVcdAnnotation)
-    val tree             = inTree.map(n => decisionTreeNodeLitToChiselType(n, p))
-    val candidate        = inCandidate.asFixedPointVecLit(p.fixedPointWidth.W, p.fixedPointBinaryPoint.BP)
+    val candidate        = inCandidate.asFixedPointVecLit(p(FixedPointWidth).W, p(FixedPointBinaryPoint).BP)
 
-    test(new DecisionTree(tree, p)).withAnnotations(annos) { dut =>
+    test(new DecisionTree()(p)).withAnnotations(annos) { dut =>
       dut.io.in.valid.poke(false.B)
       dut.io.in.ready.expect(true.B)
       dut.clock.step()

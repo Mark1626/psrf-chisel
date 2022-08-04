@@ -3,12 +3,21 @@ package psrf
 import chisel3._
 import chisel3.util._
 import chisel3.experimental.FixedPoint
+import config.{Field, Parameters}
 
-class RandomForestClassifierTestHarness(
-  p:                       RandomForestClassifierParams,
+case object TestHarnessKey extends Field[TestHarnessParams]
+
+case class TestHarnessParams(
   testCandidates:          List[List[Double]],
   expectedClassifications: List[Int])
-    extends Module {
+
+trait HasTestHarnessParams extends HasFixedPointParameters {
+  val params                  = p(TestHarnessKey)
+  val testCandidates          = params.testCandidates
+  val expectedClassifications = params.expectedClassifications
+}
+
+class RandomForestClassifierTestHarness(implicit val p: Parameters) extends Module with HasTestHarnessParams {
   require(
     testCandidates.length == expectedClassifications.length,
     "Number of test candidates and expected classifications don't match"
@@ -26,12 +35,10 @@ class RandomForestClassifierTestHarness(
   val busy     = RegInit(false.B)
   val pokeDone = RegInit(false.B)
   val testCandidateROM = VecInit(
-    testCandidates.map(c =>
-      VecInit(c.map(f => FixedPoint.fromDouble(f, p.fixedPointWidth.W, p.fixedPointBinaryPoint.BP)))
-    )
+    testCandidates.map(c => VecInit(c.map(f => FixedPoint.fromDouble(f, fixedPointWidth.W, fixedPointBinaryPoint.BP))))
   )
   val expectedClassificationROM          = VecInit(expectedClassifications.map(_.U))
-  val randomForestClassifier             = Module(new RandomForestClassifier(p))
+  val randomForestClassifier             = Module(new RandomForestClassifier()(p))
   val (pokeCounter, pokeCounterWrap)     = Counter(randomForestClassifier.io.in.fire, numCases)
   val (expectCounter, expectCounterWrap) = Counter(randomForestClassifier.io.out.fire, numCases)
 

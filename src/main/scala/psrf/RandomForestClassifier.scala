@@ -3,38 +3,34 @@ package psrf
 import chisel3._
 import chisel3.util._
 import chisel3.experimental.FixedPoint
+import config.{Field, Parameters}
 
-case class RandomForestClassifierParams(
-  numTrees:              Int,
-  numNodes:              Seq[Int],
-  numClasses:            Int,
-  numFeatures:           Int,
-  fixedPointWidth:       Int,
-  fixedPointBinaryPoint: Int,
-  treesLit:              Seq[Seq[DecisionTreeNodeLit]]) {
-  require(numNodes.length == numTrees, "Number of numNodes provided does not match number of trees")
+case object NumFeatures           extends Field[Int]
+case object NumClasses            extends Field[Int]
+case object NumTrees              extends Field[Int]
+case object FixedPointWidth       extends Field[Int]
+case object FixedPointBinaryPoint extends Field[Int]
+
+trait HasFixedPointParameters {
+  implicit val p: Parameters
+  val fixedPointWidth       = p(FixedPointWidth)
+  val fixedPointBinaryPoint = p(FixedPointBinaryPoint)
+}
+trait HasRandomForestParameters extends HasFixedPointParameters {
+  val numTrees        = p(NumTrees)
+  val numClasses      = p(NumClasses)
+  val numFeatures     = p(NumFeatures)
   val classIndexWidth = log2Ceil(numClasses)
-  val decisionTreeArrayParams =
-    DecisionTreeArrayParams(
-      numTrees,
-      numNodes,
-      numClasses,
-      numFeatures,
-      fixedPointWidth,
-      fixedPointBinaryPoint,
-      treesLit
-    )
 }
 
-class RandomForestClassifier(p: RandomForestClassifierParams) extends Module {
-  import p._
+class RandomForestClassifier(implicit val p: Parameters) extends Module with HasRandomForestParameters {
   val io = IO(new Bundle {
     val in  = Flipped(Decoupled(Vec(numFeatures, FixedPoint(fixedPointWidth.W, fixedPointBinaryPoint.BP))))
-    val out = Irrevocable(new MajorityVoterOut(classIndexWidth))
+    val out = Irrevocable(new MajorityVoterOut()(p))
   })
 
-  val decisionTreeArray = Module(new DecisionTreeArraySimple(decisionTreeArrayParams))
-  val majorityVoter     = Module(new MajorityVoterArea(numTrees, numClasses))
+  val decisionTreeArray = Module(new DecisionTreeArraySimple()(p))
+  val majorityVoter     = Module(new MajorityVoterArea()(p))
 
   decisionTreeArray.io.in <> io.in
   majorityVoter.io.in <> decisionTreeArray.io.out
