@@ -5,7 +5,7 @@ import chisel3.util._
 import chisel3.experimental.FixedPoint
 import config.{Field, Parameters}
 
-case object TestHarnessKey extends Field[TestHarnessParams]
+case object TestHarnessKey extends Field[TestHarnessParams](TestHarnessParams(Nil, Nil))
 
 case class TestHarnessParams(
   testCandidates:          List[List[Double]],

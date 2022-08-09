@@ -16,6 +16,7 @@ trait HasFixedPointParameters {
   val fixedPointWidth       = p(FixedPointWidth)
   val fixedPointBinaryPoint = p(FixedPointBinaryPoint)
 }
+
 trait HasRandomForestParameters extends HasFixedPointParameters {
   val numTrees        = p(NumTrees)
   val numClasses      = p(NumClasses)

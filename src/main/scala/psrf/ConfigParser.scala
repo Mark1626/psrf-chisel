@@ -5,6 +5,7 @@ import io.circe.HCursor
 import io.circe.Decoder
 import io.circe.Json
 import io.circe.DecodingFailure
+import config.{Config, Parameters}
 
 case class HWStageConfig(
   classLabels:             List[Int],
@@ -17,7 +18,22 @@ case class HWStageConfig(
   majorityVoterType:       String,
   buildType:               String,
   testCandidates:          Option[List[List[Double]]],
-  expectedClassifications: Option[List[Int]])
+  expectedClassifications: Option[List[Int]]) {
+
+  def getCDEConfig(): Parameters = {
+    new Config((site, here, up) => {
+      case NumFeatures           => numFeatures
+      case NumClasses            => numClasses
+      case NumTrees              => numTrees
+      case FixedPointWidth       => fixedPointWidth
+      case FixedPointBinaryPoint => fixedPointBinaryPoint
+      case TreeLiterals          => treeLiterals
+      case TestHarnessKey =>
+        if (buildType == "test") TestHarnessParams(testCandidates.get, expectedClassifications.get)
+    })
+  }
+
+}
 
 object HWStageConfig {
   def apply(jsonString: String): Either[io.circe.Error, HWStageConfig] = {
