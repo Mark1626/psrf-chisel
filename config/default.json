@@ -4,6 +4,7 @@
     "n_estimators": 4,
     "max_leaf_nodes": 3,
     "build_type": "test",
+    "build_target": "sim",
     "passthrough": {
         "fixed_point_width": 8,
         "fixed_point_bp": 4,

@@ -82,6 +82,7 @@ def main(args):
         exit(1)
 
     params["build_type"] = build_type
+    params["build_target"] = config.get("build_target", cn.DEFAULT_BUILD_TARGET)
 
     # Write output JSoN file to be used by HW layer
     if args.verbose:

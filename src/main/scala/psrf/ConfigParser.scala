@@ -17,6 +17,7 @@ case class HWStageConfig(
   fixedPointBinaryPoint:   Int,
   majorityVoterType:       String,
   buildType:               String,
+  buildTarget:             String,
   testCandidates:          Option[List[List[Double]]],
   expectedClassifications: Option[List[Int]]) {
 
@@ -71,6 +72,7 @@ object HWStageConfig {
           fixedPointBinaryPoint <- hCursor.get[Int]("fixed_point_bp")
           majorityVoterType     <- hCursor.get[String]("opt_majority_voter")
           buildType             <- hCursor.get[String]("build_type")
+          buildTarget           <- hCursor.get[String]("build_target")
           testCandidates <- buildType match {
             case "test" => {
               hCursor.get[List[List[Double]]]("test_candidates") match {
@@ -102,6 +104,7 @@ object HWStageConfig {
             fixedPointBinaryPoint,
             majorityVoterType,
             buildType,
+            buildTarget,
             testCandidates,
             expectedClassifications
           )
