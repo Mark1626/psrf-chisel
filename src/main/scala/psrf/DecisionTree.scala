@@ -41,8 +41,8 @@ object DecisionTreeNode {
       _.isLeafNode        -> n.isLeafNode.B,
       _.featureClassIndex -> n.featureClassIndex.U(dtb.featureClassIndexWidth.W),
       _.threshold         -> FixedPoint.fromDouble(n.threshold, dtb.fixedPointWidth.W, dtb.fixedPointBinaryPoint.BP),
-      _.rightNode         -> n.rightNode.U(dtb.nodeAddrWidth.W),
-      _.leftNode          -> n.leftNode.U(dtb.nodeAddrWidth.W)
+      _.rightNode         -> (if (n.rightNode < 0) 0 else n.rightNode).U(dtb.nodeAddrWidth.W),
+      _.leftNode          -> (if (n.leftNode < 0) 0 else n.leftNode).U(dtb.nodeAddrWidth.W)
     )
   }
 }
