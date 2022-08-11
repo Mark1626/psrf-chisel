@@ -14,7 +14,9 @@ import firrtl.stage.OutputFileAnnotation
 
 object BuildPipeline {
   lazy val runsDirectory             = new File("runs")
-  lazy val pythonSrcDirectory        = new File("src/main/python")
+  lazy val srcDirectory              = new File("src")
+  lazy val pythonSrcDirectory        = new File(srcDirectory, "main/python")
+  lazy val cppSrcDirectory           = new File(srcDirectory, "main/cpp")
   lazy val swStageSrcFile            = new File(pythonSrcDirectory, "main.py")
   lazy val pythonVenvDirectory       = new File("env")
   lazy val pythonVenvActivationFile  = new File(pythonVenvDirectory, "/bin/activate")
@@ -137,13 +139,44 @@ object BuildPipeline {
     printIfVerbose(s"Generated Verilog file: ${outputVerilogFileName}")
 
     // Build stage
+    // TODO Make tracing an option from the configuration file
+    val trace = true
+    val verilatorCmakeCmd = Seq(
+      "cmake",
+      "-S",
+      s"${cppSrcDirectory.getAbsolutePath()}",
+      "-B",
+      buildDirAbsolutePath,
+      s"-DBUILD_SIMULATOR=${buildName}",
+      s"-DVERILOG_SRC=${outputVerilogFileName}",
+      s"-DVERILATOR_TRACE=${if (trace) "ON" else "OFF"}"
+    )
+
+    val verilatorBuildCmd = Seq(
+      "cmake",
+      "--build",
+      buildDirAbsolutePath
+    )
+
+    val verilatorRunCmd =
+      Seq(buildDirAbsolutePath + File.separator + buildName, { if (trace) vcdFile.getAbsolutePath else "" })
+
     hwStageConfigParseResult.buildTarget match {
       case "sim" => {
         printIfVerbose("Simulation build target chosen")
+        printIfVerbose("Building the Verilator simulator...")
+        runProcess(
+          verilatorCmakeCmd #&& verilatorBuildCmd,
+          logger,
+          "An error occured while building the verilator simulator"
+        )
+        printIfVerbose("Running the Verilator simulator...")
+        runProcess(verilatorRunCmd, logger, "An error occured while running the verilator simulator")
+        printIfVerbose("Build done!!!")
       }
       case "synth" => {
         printIfVerbose("Synthesis build target chosen")
-
+        printIfVerbose("Build done!!!")
       }
     }
 

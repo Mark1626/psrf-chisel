@@ -6,8 +6,8 @@
     "build_type": "test",
     "build_target": "sim",
     "passthrough": {
-        "fixed_point_width": 8,
-        "fixed_point_bp": 4,
+        "fixed_point_width": 16,
+        "fixed_point_bp": 8,
         "opt_majority_voter": "area"
     }
 }

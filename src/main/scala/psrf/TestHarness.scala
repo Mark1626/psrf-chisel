@@ -27,8 +27,10 @@ class RandomForestClassifierTestHarness(implicit val p: Parameters) extends Modu
     val start = Input(Bool())
     val done  = Output(Bool())
     val out = Irrevocable(new Bundle {
-      val pass            = Bool()
-      val noClearMajority = Bool()
+      val expectedClassification  = UInt()
+      val resultantClassification = UInt()
+      val pass                    = Bool()
+      val noClearMajority         = Bool()
     })
   })
 
@@ -47,6 +49,8 @@ class RandomForestClassifierTestHarness(implicit val p: Parameters) extends Modu
 
   io.out.valid                        := randomForestClassifier.io.out.valid
   io.out.bits.pass                    := expectedClassificationROM(expectCounter) === randomForestClassifier.io.out.bits.classification
+  io.out.bits.expectedClassification  := expectedClassificationROM(expectCounter)
+  io.out.bits.resultantClassification := randomForestClassifier.io.out.bits.classification
   io.out.bits.noClearMajority         := randomForestClassifier.io.out.bits.noClearMajority
   randomForestClassifier.io.out.ready := io.out.ready
 
