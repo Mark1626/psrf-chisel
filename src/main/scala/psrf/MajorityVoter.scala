@@ -55,7 +55,7 @@ class MajorityVoterArea(implicit p: Parameters) extends MajorityVoterModule {
     val rest      = io.out.valid & io.out.ready
 
     val decisions       = Reg(Vec(numTrees, UInt(classIndexWidth.W)))
-    val voteCount       = Reg(Vec(numClasses, UInt(log2Ceil(numTrees).W)))
+    val voteCount       = Reg(Vec(numClasses, UInt((log2Ceil(numTrees) + 1).W)))
     val maxClass        = Reg(UInt(log2Ceil(numClasses).W))
     val noClearMajority = RegInit(false.B)
 
@@ -74,6 +74,7 @@ class MajorityVoterArea(implicit p: Parameters) extends MajorityVoterModule {
     switch(state) {
       is(idle) {
         io.in.ready := true.B
+        voteCount   := 0.U.asTypeOf(voteCount)
         when(start) {
           state     := busy
           busyState := count
