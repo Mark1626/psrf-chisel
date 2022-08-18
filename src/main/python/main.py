@@ -34,7 +34,7 @@ def main(args):
         exit(1)
 
     # Split dataset into training and testing subsets
-    train_split_size = config.get("train_split_size", cn.DEFAULT_TRAIN_SPLIT_SIZE)
+    train_split_size = config.pop("train_split_size", cn.DEFAULT_TRAIN_SPLIT_SIZE)
 
     input_train, input_test, target_train, target_test = train_test_split(
         input_data, target_data, train_size=train_split_size
@@ -48,11 +48,11 @@ def main(args):
     rf_classifier = rf_train.train_rf_classifier(
         input_train_data=input_train,
         target_train_data=target_train,
-        n_estimators=config.get("n_estimators", cn.DEFAULT_N_ESTIMATORS),
-        criterion=config.get("criterion", cn.DEFAULT_CRITERION),
-        max_leaf_nodes=config.get("max_leaf_nodes", cn.DEFAULT_MAX_LEAF_NODES),
-        max_depth=config.get("max_depth"),
-        n_jobs=config.get("n_jobs"),
+        n_estimators=config.pop("n_estimators", cn.DEFAULT_N_ESTIMATORS),
+        criterion=config.pop("criterion", cn.DEFAULT_CRITERION),
+        max_leaf_nodes=config.pop("max_leaf_nodes", cn.DEFAULT_MAX_LEAF_NODES),
+        max_depth=config.pop("max_depth", cn.DEFAULT_MAX_DEPTH),
+        n_jobs=config.pop("n_jobs", cn.DEFAULT_N_JOBS),
         verbose=args.verbose,
     )
 
@@ -68,27 +68,29 @@ def main(args):
 
     # Extract necessary data and parameters from the trained random forest
     # classifier to be tranmitted to HW stage
-    params = rf_train.extract_rf_classifier_params(rf_classifier)
-    passthrough_params = config.get("passthrough")
-    if passthrough_params:
-        params.update(passthrough_params)
+    toHWStage_config = rf_train.extract_rf_classifier_params(rf_classifier)
 
-    build_type = config.get("build_type", cn.DEFAULT_BUILD_TYPE)
+    build_type = config.pop("build_type", cn.DEFAULT_BUILD_TYPE)
     if build_type == "test":
-        params["test_candidates"] = input_test.tolist()
-        params["expected_classifications"] = pred_test.tolist()
+        toHWStage_config["test_candidates"] = input_test.tolist()
+        toHWStage_config["expected_classifications"] = pred_test.tolist()
     else:
         print("Unsupported build type: {0}\n".format(build_type))
         exit(1)
 
-    params["build_type"] = build_type
-    params["build_target"] = config.get("build_target", cn.DEFAULT_BUILD_TARGET)
+    toHWStage_config["build_type"] = build_type
+    toHWStage_config["build_target"] = config.pop(
+        "build_target", cn.DEFAULT_BUILD_TARGET
+    )
+
+    # Append remaining config entries to hardware stage config
+    toHWStage_config.update(config)
 
     # Write output JSoN file to be used by HW layer
     if args.verbose:
         print("Writing generated output file: {0}\n".format(args.out))
 
-    rw_json.write_json_file(params, args.out)
+    rw_json.write_json_file(toHWStage_config, args.out)
 
 
 if __name__ == "__main__":
