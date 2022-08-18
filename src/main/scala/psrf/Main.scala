@@ -1,5 +1,7 @@
 package psrf
 
+import psrf.buildpipe.BuildPipeline
+
 object Main {
   val usage = """
 sbt "run [options] config_file"
