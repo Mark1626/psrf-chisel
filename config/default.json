@@ -1,7 +1,7 @@
 {
     "dataset": "iris",
     "train_split_size": 0.7,
-    "n_estimators": 4,
+    "n_estimators": 100,
     "max_leaf_nodes": 3,
     "build_type": "test",
     "build_target": "sim",
