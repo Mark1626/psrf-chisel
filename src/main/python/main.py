@@ -1,7 +1,7 @@
 from sklearn.datasets import load_iris
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
-
+import pandas as pd
 import argparse
 
 import rf_train
@@ -20,7 +20,7 @@ def main(args):
     # Load dataset
     # TODO Currently only iris dataset is supported. Add support for other
     # datasets in csv files with user options for data and target headers
-    dataset = config.get("dataset")
+    dataset = config.pop("dataset")
     print("Loading dataset...\n")
     input_data = []
     target_data = []
@@ -29,6 +29,13 @@ def main(args):
         iris = load_iris()
         input_data = iris.data
         target_data = iris.target
+    elif dataset.endswith(".csv"):
+        print("Reading csv file: {0}\n".format(dataset))
+        data = pd.read_csv(dataset)
+        input_headers = config.get("input_headers")
+        target_header = config.get("target_header")
+        input_data = data[input_headers].to_numpy()
+        target_data = data[target_header].to_numpy()
     else:
         print("Unsupported dataset: {0}\n".format(dataset))
         exit(1)
@@ -64,7 +71,7 @@ def main(args):
         print("Calculating accuracy of trained Random Forest Classifier...")
 
     accuracy = accuracy_score(target_test, pred_test)
-    print("Accuracy of Random Forest Classifier: {0}\n".format(accuracy))
+    print("Accuracy of Random Forest Classifier in Software: {0}\n".format(accuracy))
 
     # Extract necessary data and parameters from the trained random forest
     # classifier to be tranmitted to HW stage
