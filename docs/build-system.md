@@ -1,6 +1,6 @@
 # Build system
 
-This document describes the build system of the Random Forest classifier project.
+This document describes the build system of the Random forest classifier project.
 
 ![Overall build pipeline](images/build-pipeline.png)
 
@@ -24,7 +24,7 @@ The build target decides what is done with the generated verilog design during t
 
 - `simulation` -- The simulation build target may be used to simulate the generated verilog design. It builds a verilator-based simulator model and runs the simulator to verify the behaviour of the module.
 
-- `synthesis` -- The synthesis build target may be used when the generated modules is to be synthesised by an external FPGA tool chain. The synthesis builds basically cause the build pipeline to exit after verilog generation from chisel.
+- `synthesis` -- The synthesis build target may be used when the generated modules are to be synthesised by an external FPGA tool chain. The synthesis build basically causes the build pipeline to exit after verilog generation from chisel.
 
 ## Build pipeline stages
 

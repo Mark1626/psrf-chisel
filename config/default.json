@@ -12,5 +12,4 @@
     "build_target": "sim",
     "fixed_point_width": 32,
     "fixed_point_bp": 16,
-    "opt_majority_voter": "area"
 }
