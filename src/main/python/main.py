@@ -68,10 +68,10 @@ def main(args):
 
     # Calculate accuracy of trained classifier
     if args.verbose:
-        print("Calculating accuracy of trained Random Forest Classifier...")
+        print("Calculating accuracy of trained Random Forest Classifier in software...")
 
     accuracy = accuracy_score(target_test, pred_test)
-    print("Accuracy of Random Forest Classifier in Software: {0}\n".format(accuracy))
+    print("Accuracy of Random Forest Classifier in software: {0}\n".format(accuracy))
 
     # Extract necessary data and parameters from the trained random forest
     # classifier to be tranmitted to HW stage
@@ -80,7 +80,8 @@ def main(args):
     build_type = config.pop("build_type", cn.DEFAULT_BUILD_TYPE)
     if build_type == "test":
         toHWStage_config["test_candidates"] = input_test.tolist()
-        toHWStage_config["expected_classifications"] = pred_test.tolist()
+        toHWStage_config["sw_relative_classifications"] = pred_test.tolist()
+        toHWStage_config["target_classifications"] = target_test.tolist()
     else:
         print("Unsupported build type: {0}\n".format(build_type))
         exit(1)

@@ -16,18 +16,19 @@ import firrtl.options.TargetDirAnnotation
 import firrtl.stage.OutputFileAnnotation
 
 case class HWStageConfig(
-  classLabels:             List[Int],
-  numFeatures:             Int,
-  numClasses:              Int,
-  numTrees:                Int,
-  treeLiterals:            List[List[DecisionTreeNodeLit]],
-  fixedPointWidth:         Int,
-  fixedPointBinaryPoint:   Int,
-  majorityVoterType:       String,
-  buildType:               String,
-  buildTarget:             String,
-  testCandidates:          Option[List[List[Double]]],
-  expectedClassifications: Option[List[Int]]) {
+  classLabels:               List[Int],
+  numFeatures:               Int,
+  numClasses:                Int,
+  numTrees:                  Int,
+  treeLiterals:              List[List[DecisionTreeNodeLit]],
+  fixedPointWidth:           Int,
+  fixedPointBinaryPoint:     Int,
+  majorityVoterType:         String,
+  buildType:                 String,
+  buildTarget:               String,
+  testCandidates:            Option[List[List[Double]]],
+  swRelativeClassifications: Option[List[Int]],
+  targetClassifications:     Option[List[Int]]) {
 
   def getCDEConfig(): Parameters = {
     new Config((site, here, up) => {
@@ -38,7 +39,8 @@ case class HWStageConfig(
       case FixedPointBinaryPoint => fixedPointBinaryPoint
       case TreeLiterals          => treeLiterals
       case TestHarnessKey =>
-        if (buildType == "test") TestHarnessParams(testCandidates.get, expectedClassifications.get)
+        if (buildType == "test")
+          TestHarnessParams(testCandidates.get, swRelativeClassifications.get, targetClassifications.get)
     })
   }
 
@@ -91,12 +93,22 @@ object HWStageConfig {
             }
             case _ => Right(None)
           }
-          expectedClassifications <- buildType match {
+          swRelativeClassifications <- buildType match {
             case "test" => {
-              hCursor.get[List[Int]]("expected_classifications") match {
+              hCursor.get[List[Int]]("sw_relative_classifications") match {
                 case Right(ec) => Right(Some(ec))
                 case Left(_) =>
-                  Left(DecodingFailure("Expected classfications not found for test build", hCursor.history))
+                  Left(DecodingFailure("Software relative classifications not found for test build", hCursor.history))
+              }
+            }
+            case _ => Right(None)
+          }
+          targetClassifications <- buildType match {
+            case "test" => {
+              hCursor.get[List[Int]]("target_classifications") match {
+                case Right(ec) => Right(Some(ec))
+                case Left(_) =>
+                  Left(DecodingFailure("Target classfications not found for test build", hCursor.history))
               }
             }
             case _ => Right(None)
@@ -114,7 +126,8 @@ object HWStageConfig {
             buildType,
             buildTarget,
             testCandidates,
-            expectedClassifications
+            swRelativeClassifications,
+            targetClassifications
           )
         }
       }

@@ -5,32 +5,40 @@ import chisel3.util._
 import chisel3.experimental.FixedPoint
 import config.{Field, Parameters}
 
-case object TestHarnessKey extends Field[TestHarnessParams](TestHarnessParams(Nil, Nil))
+case object TestHarnessKey extends Field[TestHarnessParams](TestHarnessParams(Nil, Nil, Nil))
 
 case class TestHarnessParams(
-  testCandidates:          List[List[Double]],
-  expectedClassifications: List[Int])
+  testCandidates:            List[List[Double]],
+  swRelativeClassifications: List[Int],
+  targetClassifications:     List[Int])
 
 trait HasTestHarnessParams extends HasFixedPointParameters {
-  val params                  = p(TestHarnessKey)
-  val testCandidates          = params.testCandidates
-  val expectedClassifications = params.expectedClassifications
+  val params                    = p(TestHarnessKey)
+  val testCandidates            = params.testCandidates
+  val swRelativeClassifications = params.swRelativeClassifications
+  val targetClassifications     = params.targetClassifications
 }
 
 class RandomForestClassifierTestHarness(implicit val p: Parameters) extends Module with HasTestHarnessParams {
   require(
-    testCandidates.length == expectedClassifications.length,
-    "Number of test candidates and expected classifications don't match"
+    testCandidates.length == swRelativeClassifications.length,
+    "Number of test candidates and software relative classifications don't match"
+  )
+  require(
+    testCandidates.length == targetClassifications.length,
+    "Number of test candidates and target classifications don't match"
   )
   val numCases = testCandidates.length
   val io = IO(new Bundle {
     val start = Input(Bool())
     val done  = Output(Bool())
     val out = Irrevocable(new Bundle {
-      val expectedClassification  = UInt()
-      val resultantClassification = UInt()
-      val pass                    = Bool()
-      val noClearMajority         = Bool()
+      val swRelativeClassification = UInt()
+      val targetClassification     = UInt()
+      val resultantClassification  = UInt()
+      val swRelativePass           = Bool()
+      val targetPass               = Bool()
+      val noClearMajority          = Bool()
     })
   })
 
@@ -39,7 +47,8 @@ class RandomForestClassifierTestHarness(implicit val p: Parameters) extends Modu
   val testCandidateROM = VecInit(
     testCandidates.map(c => VecInit(c.map(f => FixedPoint.fromDouble(f, fixedPointWidth.W, fixedPointBinaryPoint.BP))))
   )
-  val expectedClassificationROM          = VecInit(expectedClassifications.map(_.U))
+  val swRelativeClassificationROM        = VecInit(swRelativeClassifications.map(_.U))
+  val targetClassificationROM            = VecInit(targetClassifications.map(_.U))
   val randomForestClassifier             = Module(new RandomForestClassifier()(p))
   val (pokeCounter, pokeCounterWrap)     = Counter(randomForestClassifier.io.in.fire, numCases)
   val (expectCounter, expectCounterWrap) = Counter(randomForestClassifier.io.out.fire, numCases)
@@ -47,12 +56,18 @@ class RandomForestClassifierTestHarness(implicit val p: Parameters) extends Modu
   randomForestClassifier.io.in.valid := busy && !pokeDone
   randomForestClassifier.io.in.bits  := testCandidateROM(pokeCounter)
 
-  io.out.valid                        := randomForestClassifier.io.out.valid
-  io.out.bits.pass                    := expectedClassificationROM(expectCounter) === randomForestClassifier.io.out.bits.classification
-  io.out.bits.expectedClassification  := expectedClassificationROM(expectCounter)
-  io.out.bits.resultantClassification := randomForestClassifier.io.out.bits.classification
-  io.out.bits.noClearMajority         := randomForestClassifier.io.out.bits.noClearMajority
-  randomForestClassifier.io.out.ready := io.out.ready
+  io.out.valid := randomForestClassifier.io.out.valid
+  io.out.bits.swRelativePass := swRelativeClassificationROM(
+    expectCounter
+  ) === randomForestClassifier.io.out.bits.classification
+  io.out.bits.targetPass := targetClassificationROM(
+    expectCounter
+  ) === randomForestClassifier.io.out.bits.classification
+  io.out.bits.swRelativeClassification := swRelativeClassificationROM(expectCounter)
+  io.out.bits.targetClassification     := targetClassificationROM(expectCounter)
+  io.out.bits.resultantClassification  := randomForestClassifier.io.out.bits.classification
+  io.out.bits.noClearMajority          := randomForestClassifier.io.out.bits.noClearMajority
+  randomForestClassifier.io.out.ready  := io.out.ready
 
   io.done := expectCounterWrap && randomForestClassifier.io.out.fire
 

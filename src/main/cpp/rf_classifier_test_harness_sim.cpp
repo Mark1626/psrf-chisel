@@ -7,9 +7,11 @@ RFClassifierTestHarnessSim::RFClassifierTestHarnessSim(char *vcd_filename) : Sim
 RFClassifierTestHarnessSim::RFClassifierTestHarnessSim() : Simulator() {}
 
 bool RFClassifierTestHarnessSim::execTest() {
+
   bool pass = true;
   unsigned test_cnt = 0;
-  unsigned fail_cnt = 0;
+  unsigned sw_relative_fail_cnt = 0;
+  unsigned target_fail_cnt = 0;
   unsigned no_clear_majority_cnt = 0;
 
   dut->io_start = 1;
@@ -20,12 +22,19 @@ bool RFClassifierTestHarnessSim::execTest() {
 
   while (dut->io_done != 1) {
     if (dut->io_out_valid == 1) {
-        if(dut->io_out_bits_pass != 1) {
-          std::cout << "Test failed at case: " << test_cnt << " "
-                    << "Expected: " << int(dut->io_out_bits_expectedClassification)
+        if(dut->io_out_bits_swRelativePass != 1 | dut->io_out_bits_targetPass != 1) {
+          std::cout << "Test failed at case: " << test_cnt
+                    << " Expected: " << int(dut->io_out_bits_swRelativeClassification)
+                    << " Target Expected: " << int(dut->io_out_bits_targetClassification)
                     << " Result: " << int(dut->io_out_bits_resultantClassification) << std::endl;
             pass = false;
-            fail_cnt++;
+
+            if(dut->io_out_bits_swRelativePass != 1) {
+              sw_relative_fail_cnt++;
+            }
+            if(dut->io_out_bits_targetPass != 1) {
+              target_fail_cnt++;
+            }
         }
         if(dut->io_out_bits_noClearMajority == 1) {
             no_clear_majority_cnt++;
@@ -35,7 +44,10 @@ bool RFClassifierTestHarnessSim::execTest() {
     step();
     }
 
-    std::cout << "Test failures detected: " << fail_cnt << std::endl;
+    std::cout << "Test count: " << test_cnt << std::endl;
+    std::cout << "Mismatches with software detected: " << sw_relative_fail_cnt << std::endl;
+    std::cout << "Mismatches with target detected: " << target_fail_cnt << std::endl;
+    std::cout << "Accuracy of Random Forest Classifier in hardware: " << double(test_cnt - target_fail_cnt)/test_cnt << std::endl;
     std::cout << "No clear majorities detected: " << no_clear_majority_cnt
               << std::endl;
     return pass;
