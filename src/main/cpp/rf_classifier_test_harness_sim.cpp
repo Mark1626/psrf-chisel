@@ -22,27 +22,24 @@ bool RFClassifierTestHarnessSim::execTest() {
 
   while (dut->io_done != 1) {
     if (dut->io_out_valid == 1) {
-        if(dut->io_out_bits_swRelativePass != 1 | dut->io_out_bits_targetPass != 1) {
-          std::cout << "Test failed at case: " << test_cnt
-                    << " Expected: " << int(dut->io_out_bits_swRelativeClassification)
-                    << " Target Expected: " << int(dut->io_out_bits_targetClassification)
-                    << " Result: " << int(dut->io_out_bits_resultantClassification) << std::endl;
-            pass = false;
+      bool sw_relative_fail = dut->io_out_bits_swRelativePass != 1;
+      bool target_fail = dut->io_out_bits_targetPass != 1;
+      sw_relative_fail_cnt += sw_relative_fail;
+      target_fail_cnt += target_fail;
+      no_clear_majority_cnt += (dut->io_out_bits_noClearMajority == 1);
+      test_cnt++;
 
-            if(dut->io_out_bits_swRelativePass != 1) {
-              sw_relative_fail_cnt++;
-            }
-            if(dut->io_out_bits_targetPass != 1) {
-              target_fail_cnt++;
-            }
-        }
-        if(dut->io_out_bits_noClearMajority == 1) {
-            no_clear_majority_cnt++;
-        }
-        test_cnt++;
+      if (sw_relative_fail | target_fail) {
+        std::cout << "Mismatch occured at test case: " << test_cnt << " Software relative expected: "
+                  << int(dut->io_out_bits_swRelativeClassification)
+                  << " Target expected: "
+                  << int(dut->io_out_bits_targetClassification) << " Result: "
+                  << int(dut->io_out_bits_resultantClassification) << std::endl;
+        pass = false;
+      }
     }
     step();
-    }
+  }
 
     std::cout << "Test count: " << test_cnt << std::endl;
     std::cout << "Mismatches with software detected: " << sw_relative_fail_cnt << std::endl;
