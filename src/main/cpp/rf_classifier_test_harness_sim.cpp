@@ -9,6 +9,7 @@ RFClassifierTestHarnessSim::RFClassifierTestHarnessSim() : Simulator() {}
 bool RFClassifierTestHarnessSim::execTest() {
 
   bool pass = true;
+  bool done = false;
   unsigned test_cnt = 0;
   unsigned sw_relative_fail_cnt = 0;
   unsigned target_fail_cnt = 0;
@@ -20,7 +21,7 @@ bool RFClassifierTestHarnessSim::execTest() {
   dut->io_start = 0;
   step();
 
-  while (dut->io_done != 1) {
+  while (!done) {
     if (dut->io_out_valid == 1) {
       bool sw_relative_fail = dut->io_out_bits_swRelativePass != 1;
       bool target_fail = dut->io_out_bits_targetPass != 1;
@@ -38,6 +39,7 @@ bool RFClassifierTestHarnessSim::execTest() {
         pass = false;
       }
     }
+    done = dut->io_done;
     step();
   }
 

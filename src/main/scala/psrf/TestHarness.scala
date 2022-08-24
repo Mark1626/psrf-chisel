@@ -43,7 +43,7 @@ class RandomForestClassifierTestHarness(implicit val p: Parameters) extends Modu
   })
 
   val busy     = RegInit(false.B)
-  val pokeDone = RegInit(false.B)
+  val pokeDone = RegInit(true.B)
   val testCandidateROM = VecInit(
     testCandidates.map(c => VecInit(c.map(f => FixedPoint.fromDouble(f, fixedPointWidth.W, fixedPointBinaryPoint.BP))))
   )
@@ -72,5 +72,5 @@ class RandomForestClassifierTestHarness(implicit val p: Parameters) extends Modu
   io.done := expectCounterWrap && randomForestClassifier.io.out.fire
 
   busy     := Mux(busy, !io.done, io.start)
-  pokeDone := Mux(pokeDone, pokeCounterWrap && randomForestClassifier.io.in.ready, io.start)
+  pokeDone := Mux(pokeDone, !io.start, pokeCounterWrap && randomForestClassifier.io.in.ready)
 }
