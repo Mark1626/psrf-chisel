@@ -11,28 +11,29 @@ repeat
 in.valid = true;
 
 :**Latch candidate**
+//candidate = in//
 //state = busy//
-//in.ready = false//
-//current node = treeROM(0) = Root node//;
+//in.ready = false//;
+
+:**Set current node as root node**
+//currentNode = treeROM(0)//;
 
 -> Start tree traversal;
 
 repeat
-        if (**Candidate feature value <= Node threshold value**) then (true)
+        if (**candidate.featureValue <= currentNode.thresholdValue**) then (true)
                 :**Fetch left node**
-                //current node = treeROM(left child node address)//
-                //previous decision = true//;
+                //currentNode = treeROM(currentNode.leftChildNodeAddress)//;
         else (false)
                 :**Fetch right node**
-                //current node = treeROM(right child node address)//
-                //previous decision = false//;
+                //currentNode = treeROM(currentNode.rightChildNodeAddress)//;
         endif
 repeat while (**Is current node a leaf node**) is (no)
 ->yes;
 
-:**Latch output to previous decision**
+:**Latch output to final classification given by leaf node**
 //state = done//
-//out = previous decision//
+//out = currentNode.class//
 //out.valid = true//;
 
 repeat while (**Wait until output is consumed**) is (Output consumed\n//out.ready = true//)
