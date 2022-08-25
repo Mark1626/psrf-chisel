@@ -1,6 +1,6 @@
 # Configuration system
 
-This document describes the configuration system of the Random forest classifier project. Configurations are supplied as a JSON file to the build pipeline. Parameters will be used by the different stages of the pipeline and may be tweaked by the user. A default configuration file may be found [config/](../config/).
+This document describes the configuration system of the Random forest classifier project. Configurations are supplied as a JSON file to the build pipeline. Parameters will be used by the different stages of the pipeline and may be tweaked by the user. A default configuration file may be found in [config/](../config/).
 
 ## Input configuration parameters
 
@@ -101,7 +101,7 @@ This document describes the configuration system of the Random forest classifier
 
 - `opt_majority_voter`:
   The optimization to be applied to the majority voter. It can be optimized for area or time.
-***NOTE: Currently only area-friendly majority voter supported. Time-friendly majority voter will be added in the future.***
+***NOTE: Currently only area-friendly majority voter is supported. Time-friendly majority voter will be added in the future.***
   - Optional: Yes
   - Default value: "area"
   - Value type: String
