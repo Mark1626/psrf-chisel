@@ -9,15 +9,16 @@ import config.{Field, Parameters}
 case object TreeLiteral extends Field[List[DecisionTreeNodeLit]](Nil)
 
 trait HasDecisionTreeParameters extends HasRandomForestParameters {
-  val treeLiteral       = p(TreeLiteral)
-  val numNodes          = treeLiteral.length
-  val nodeAddrWidth     = log2Ceil(numNodes)
-  val featureIndexWidth = log2Ceil(numFeatures)
+  val decisionTreeNodeLiterals = p(TreeLiteral)
+  val numNodes                 = decisionTreeNodeLiterals.length
+  val nodeAddrWidth            = log2Ceil(numNodes)
+  val featureIndexWidth        = log2Ceil(numFeatures)
 
   def featureClassIndexWidth = math.max(featureIndexWidth, classIndexWidth)
-  def treeBundleSeq          = treeLiteral.map(DecisionTreeNode(_, p))
+  def decisionTreeNodes      = decisionTreeNodeLiterals.map(DecisionTreeNode(_, p))
 }
 
+/** Represent a literal node in a decision tree with Scala datatypes. */
 case class DecisionTreeNodeLit(
   isLeafNode:        Boolean,
   featureClassIndex: Int,
@@ -25,6 +26,7 @@ case class DecisionTreeNodeLit(
   rightNode:         Int,
   leftNode:          Int)
 
+/** Represent a node in a decision tree as Chisel data. */
 class DecisionTreeNode(implicit val p: Parameters) extends Bundle with HasDecisionTreeParameters {
   val isLeafNode        = Bool()
   val featureClassIndex = UInt()
@@ -34,6 +36,9 @@ class DecisionTreeNode(implicit val p: Parameters) extends Bundle with HasDecisi
 }
 
 object DecisionTreeNode {
+
+  /** Converts a literal decision tree node [[psrf.DecisionTreeNodeLit]] to chisel bundle [[psrf.DecisionTreeNode]].
+    */
   def apply(n: DecisionTreeNodeLit, p: Parameters): DecisionTreeNode = {
     // TODO Fix this hack
     val dtb = new DecisionTreeNode()(p)
@@ -46,14 +51,18 @@ object DecisionTreeNode {
     )
   }
 }
+
+/** Decision tree module which performs classification of an input candidate by traversing an internal ROM of
+  * [[psrf.DecisionTreeNode]].
+  */
 class DecisionTree(implicit val p: Parameters) extends Module with HasDecisionTreeParameters {
-  import p._
   val io = IO(new Bundle {
     val in  = Flipped(Decoupled(Vec(numFeatures, FixedPoint(fixedPointWidth.W, fixedPointBinaryPoint.BP))))
     val out = Irrevocable(UInt(classIndexWidth.W))
   })
 
-  val decisionTreeRom = VecInit(treeBundleSeq)
+  // ROM of decision tree nodes
+  val decisionTreeRom = VecInit(decisionTreeNodes)
 
   val idle :: busy :: done :: Nil = Enum(3)
 
