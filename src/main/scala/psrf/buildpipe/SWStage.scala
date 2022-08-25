@@ -15,12 +15,20 @@ case class SWStageParameters(
   val hwStageConfigFile = new File(buildDir, "hwStageConfig.json")
 }
 
+/** Software stage that performs the training of random forest classifier in python. */
 class SWStage(val p: SWStageParameters) extends BuildPipelineStage {
 
-  def pythonVenvCreateCmd   = Seq("python", "-m", "venv", p.pythonVenvDirectory.getAbsolutePath())
+  /** Command to create a python virtual environment. */
+  def pythonVenvCreateCmd = Seq("python", "-m", "venv", p.pythonVenvDirectory.getAbsolutePath())
+
+  /** Command to activate python virtual environment. */
   def pythonVenvActivateCmd = Seq("/bin/cat", p.pythonVenvActivationFile.getAbsolutePath()) #| Seq("/bin/sh")
+
+  /** Command to install all required python libraries in the virtual environment. */
   def pythonPipInstallRequirementsCmd =
     pythonVenvActivateCmd #&& Seq("pip", "install", "-r", p.pythonPipRequirementsFile.getAbsolutePath())
+
+  /** Command to invoke the main python training script. */
   def swStageCmd = pythonVenvActivateCmd #&& Seq(
     "python",
     p.pythonSrcDirectory.getAbsolutePath() + File.separator + "main.py",

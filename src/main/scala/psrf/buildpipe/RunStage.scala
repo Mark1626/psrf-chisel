@@ -18,8 +18,10 @@ case class RunStageParameters(
   def vcdFile = new File(runDir, "waveform.vcd")
 }
 
+/** Run stage that simulates the generated design or prepares it for synthesis. */
 class RunStage(val p: RunStageParameters) extends BuildPipelineStage {
 
+  /** Command to initiate cmake for the verilator-based simulator. */
   def verilatorCmakeCmd = Seq(
     "cmake",
     "-S",
@@ -31,12 +33,14 @@ class RunStage(val p: RunStageParameters) extends BuildPipelineStage {
     s"-DVERILATOR_TRACE=${if (p.trace) "ON" else "OFF"}"
   )
 
+  /** Command to build the verilator-based simulator. */
   def verilatorBuildCmd = Seq(
     "cmake",
     "--build",
     p.buildDir.getAbsolutePath()
   )
 
+  /** Command to execute the verilator-based simulator. */
   def verilatorExecuteCmd =
     Seq(
       p.buildDir.getAbsolutePath + File.separator + p.buildPrefix,

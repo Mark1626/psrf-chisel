@@ -24,14 +24,17 @@ trait BuildPipelineStage {
   val p: BuildPipelineStageParameters
   def buildDirAbsolutePath = p.buildDir.getAbsolutePath()
 
+  /** Closes stdout and stderr streams if present. */
   def closeStreams(): Unit = {
     if (p.stdOutStream.isDefined) p.stdOutStream.get.close()
     if (p.stdErrStream.isDefined) p.stdErrStream.get.close()
   }
 
+  /** Runs a process and throws exception if it fails. */
   def runProcess(cmd: ProcessBuilder, logger: ProcessLogger, errorMsg: String = "An exception occured"): Unit =
     if (cmd.!(logger) == 1) sys.error(errorMsg)
 
+  /** Prints a message to both console and a stream */
   def printToConsoleAndStream(s: String, stream: Option[PrintWriter] = p.stdOutStream, v: Boolean = p.verbose) =
     if (p.verbose) {
       println(s)
@@ -42,7 +45,7 @@ trait BuildPipelineStage {
 
   def processLogger: ProcessLogger = ProcessLogger(
     s => printToConsoleAndStream(s, p.stdOutStream),
-    s => { println(s); printToConsoleAndStream(s, p.stdErrStream) }
+    s => printToConsoleAndStream(s, p.stdErrStream)
   )
 
   protected def executeUnsafe(): Option[BuildPipelineStageParameters]

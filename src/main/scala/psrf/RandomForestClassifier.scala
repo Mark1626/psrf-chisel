@@ -24,6 +24,7 @@ trait HasRandomForestParameters extends HasFixedPointParameters {
   val classIndexWidth = log2Ceil(numClasses)
 }
 
+/** Random forest classifier module that performs classification of input candidates */
 class RandomForestClassifier(implicit val p: Parameters) extends Module with HasRandomForestParameters {
   val io = IO(new Bundle {
     val in  = Flipped(Decoupled(Vec(numFeatures, FixedPoint(fixedPointWidth.W, fixedPointBinaryPoint.BP))))

@@ -15,6 +15,7 @@ import firrtl.AnnotationSeq
 import firrtl.options.TargetDirAnnotation
 import firrtl.stage.OutputFileAnnotation
 
+/** Hardware stage configuration parameters emitted from software stage. */
 case class HWStageConfig(
   classLabels:               List[Int],
   numFeatures:               Int,
@@ -30,6 +31,7 @@ case class HWStageConfig(
   swRelativeClassifications: Option[List[Int]],
   targetClassifications:     Option[List[Int]]) {
 
+  /** Extract context dependant environment based config for Chisel. */
   def getCDEConfig(): Parameters = {
     new Config((site, here, up) => {
       case NumFeatures           => numFeatures
@@ -46,6 +48,7 @@ case class HWStageConfig(
 
 }
 
+/** Decoder for the hardware stage JSON configuration */
 object HWStageConfig {
   def apply(jsonString: String): Either[io.circe.Error, HWStageConfig] = {
     implicit val decisionTreeNodeLitDecoder: Decoder[List[DecisionTreeNodeLit]] =
@@ -144,6 +147,7 @@ case class HWStageParameters(
   val hwStageConfigFile: File)
     extends BuildPipelineStageParameters
 
+/** Hardware stage that generates a verilog-based design from Chisel. */
 class HWStage(val p: HWStageParameters) extends BuildPipelineStage {
 
   def generateVerilog(dut: () => RawModule, targetDir: String): AnnotationSeq = (new chisel3.stage.ChiselStage).execute(

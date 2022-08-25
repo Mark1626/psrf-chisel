@@ -11,6 +11,7 @@ trait HasDecisionTreeArrayParameters extends HasRandomForestParameters {
   val treeLiterals = p(TreeLiterals)
 }
 
+/** Simple module that ties together the inputs and outputs of multiple decision tree modules */
 class DecisionTreeArraySimple(implicit val p: Parameters) extends Module with HasDecisionTreeArrayParameters {
   import p._
   require(treeLiterals.length == numTrees, "Number of tree ROMs provided does not match number of trees")

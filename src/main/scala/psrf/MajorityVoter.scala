@@ -22,6 +22,10 @@ abstract class MajorityVoterModule(implicit val p: Parameters) extends Module wi
   val io = IO(new MajorityVoterIO()(p))
 }
 
+/** Area-friendly majority voter module
+  *
+  * Counting of votes and comparison to find the majority class occurs sequentially
+  */
 class MajorityVoterArea(implicit p: Parameters) extends MajorityVoterModule {
   if (numClasses == 2) {
     val countWidth     = log2Ceil(numTrees) + 1

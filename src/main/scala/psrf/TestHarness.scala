@@ -19,6 +19,10 @@ trait HasTestHarnessParams extends HasFixedPointParameters {
   val targetClassifications     = params.targetClassifications
 }
 
+/** Harness to test the [[psrf.RandomForestClassifier]] module.
+  *
+  * Test cases relative to software and target dataset are stored in internal ROMs.
+  */
 class RandomForestClassifierTestHarness(implicit val p: Parameters) extends Module with HasTestHarnessParams {
   require(
     testCandidates.length == swRelativeClassifications.length,

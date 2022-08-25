@@ -6,6 +6,7 @@ import java.nio.file.Files
 import java.text.SimpleDateFormat
 import java.util.Calendar
 
+/** Manage directories related to build, triggers and bridges pipeline stages */
 object BuildPipeline {
 
   lazy val runsDirectory = new File("runs")
