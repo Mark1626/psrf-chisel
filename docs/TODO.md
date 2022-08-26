@@ -12,3 +12,9 @@ def predict_majorityvote(clf, X):
     modes, _ = mode(all_preds, axis=0)
     return modes[0].astype('int64')
 ```
+
+## Add hints for maximum required range and precision based on dataset while building
+
+- Currently chisel throws an error if a threshold (fixed point) in the ROM beyond the possible range of values representable with the user provided fixed point width. But this error occurs on the first encountered value that is beyond the range and an error could be thrown again if another such case is encountered. A possible enhancement would be to provide a hint to the user on what the minimum required fixed point width to represent the range is based on the data values.
+
+- Also if a value requires a precision that is smaller than what is possible with the user provided fixed point width, currently there are warnings/hints displayed. The values silently get truncated during chisel to verilog compilation. A possible enhancement would be to show a hint to the user on the minimum required fixed point width to represent the smallest precision is based on the data values.
