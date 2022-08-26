@@ -21,6 +21,9 @@ To understand how the build pipeline works and how it can be configured, please 
 - [*Build system*](docs/build-system.md)
 - [*Configuration system*](docs/config-system.md)
 
+### Building and testing with different datasets
+The build pipeline expects csv file based datasets. The `dataset` parameter expects a path to the dataset file. The `input_headers` and `target_header` parameter may be used to indicate the fields that corrospond to input data attributes and target data classifications. Please refer to the [*configuration system documentation*](docs/config-system.md) for more information.
+
 ## Running Chisel unit-tests
 To test the hardware modules using Chisel IO testers:
 
