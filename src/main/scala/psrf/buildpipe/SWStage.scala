@@ -19,18 +19,18 @@ case class SWStageParameters(
 class SWStage(val p: SWStageParameters) extends BuildPipelineStage {
 
   /** Command to create a python virtual environment. */
-  def pythonVenvCreateCmd = Seq("python", "-m", "venv", p.pythonVenvDirectory.getAbsolutePath())
+  def pythonVenvCreateCmd = Seq("python3", "-m", "venv", p.pythonVenvDirectory.getAbsolutePath())
 
   /** Command to activate python virtual environment. */
   def pythonVenvActivateCmd = Seq("/bin/cat", p.pythonVenvActivationFile.getAbsolutePath()) #| Seq("/bin/sh")
 
   /** Command to install all required python libraries in the virtual environment. */
   def pythonPipInstallRequirementsCmd =
-    pythonVenvActivateCmd #&& Seq("pip", "install", "-r", p.pythonPipRequirementsFile.getAbsolutePath())
+    pythonVenvActivateCmd #&& Seq("pip3", "install", "-r", p.pythonPipRequirementsFile.getAbsolutePath())
 
   /** Command to invoke the main python training script. */
   def swStageCmd = pythonVenvActivateCmd #&& Seq(
-    "python",
+    "python3",
     p.pythonSrcDirectory.getAbsolutePath() + File.separator + "main.py",
     "--config",
     p.swStageConfigFile.getAbsolutePath(),

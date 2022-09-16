@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.3)
 
 project(rf_classifier_verilator_simulator)
 
+set (CMAKE_CXX_STANDARD 14)
+
 set(BUILD_SIMULATOR "Default" CACHE STRING "Simulator to build")
 set(VERILOG_SRC "default.v" CACHE PATH "Verilog file to verilate")
 option(VERILATOR_TRACE "Enable VCD tracing" ON)
