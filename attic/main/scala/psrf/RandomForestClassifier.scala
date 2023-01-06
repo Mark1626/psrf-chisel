@@ -24,7 +24,6 @@ trait HasRandomForestParameters extends HasFixedPointParameters {
   val classIndexWidth = log2Ceil(numClasses)
 }
 
-/*
 /** Random forest classifier module that performs classification of input candidates */
 class RandomForestClassifier(implicit val p: Parameters) extends Module with HasRandomForestParameters {
   val io = IO(new Bundle {
@@ -39,4 +38,3 @@ class RandomForestClassifier(implicit val p: Parameters) extends Module with Has
   majorityVoter.io.in <> decisionTreeArray.io.out
   io.out <> majorityVoter.io.out
 }
-*/
