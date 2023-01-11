@@ -11,18 +11,25 @@ case object NumTrees              extends Field[Int]
 case object FixedPointWidth       extends Field[Int]
 case object FixedPointBinaryPoint extends Field[Int]
 
-trait HasFixedPointParameters {
+trait HasFixedPointParams {
   implicit val p: Parameters
   val fixedPointWidth       = p(FixedPointWidth)
   val fixedPointBinaryPoint = p(FixedPointBinaryPoint)
 }
 
-trait HasRandomForestParameters extends HasFixedPointParameters {
-  val numTrees        = p(NumTrees)
-  val numClasses      = p(NumClasses)
-  val numFeatures     = p(NumFeatures)
+trait HasDecisionTreeParams extends HasFixedPointParams {
+  implicit val p: Parameters
+  val numClasses = p(NumClasses)
+  val numFeatures = p(NumFeatures)
   val classIndexWidth = log2Ceil(numClasses)
 }
+
+trait HasRandomForestParams extends HasDecisionTreeParams {
+  implicit val p: Parameters
+  val numTrees        = p(NumTrees)
+}
+
+case class DecisionTreeParams()(implicit val p: Parameters) extends HasDecisionTreeParams
 
 /*
 /** Random forest classifier module that performs classification of input candidates */

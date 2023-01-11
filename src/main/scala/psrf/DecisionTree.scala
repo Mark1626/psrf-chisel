@@ -2,13 +2,13 @@ package psrf
 
 import chisel3._
 import chisel3.util._
-import chisel3.experimental.FixedPoint
+import chisel3.experimental.{BaseModule, FixedPoint}
 import chisel3.experimental.BundleLiterals._
 import config.{Field, Parameters}
 
 case object TreeLiteral extends Field[List[DecisionTreeNodeLit]](Nil)
 
-trait HasDecisionTreeParameters extends HasRandomForestParameters {
+trait HasDecisionTreeParameters extends HasDecisionTreeParams {
   val decisionTreeNodeLiterals = p(TreeLiteral)
   val numNodes                 = decisionTreeNodeLiterals.length
   val nodeAddrWidth            = log2Ceil(numNodes)
@@ -52,14 +52,23 @@ object DecisionTreeNode {
   }
 }
 
+class DecisionTreeIO()(implicit val p: Parameters) extends Bundle with HasDecisionTreeParameters {
+  val in = Flipped(Decoupled(Vec(numFeatures, FixedPoint(fixedPointWidth.W, fixedPointBinaryPoint.BP))))
+  val out = Decoupled(UInt(classIndexWidth.W))
+  val busy = Output(Bool())
+}
+
+trait HasDecisionTreeIO extends BaseModule {
+  implicit val p: Parameters
+  val io = IO(new DecisionTreeIO()(p))
+}
+
 /** Decision tree module which performs classification of an input candidate by traversing an internal ROM of
   * [[psrf.DecisionTreeNode]].
   */
-class DecisionTree(implicit val p: Parameters) extends Module with HasDecisionTreeParameters {
-  val io = IO(new Bundle {
-    val in  = Flipped(Decoupled(Vec(numFeatures, FixedPoint(fixedPointWidth.W, fixedPointBinaryPoint.BP))))
-    val out = Irrevocable(UInt(classIndexWidth.W))
-  })
+class DecisionTreeChiselModule(implicit val p: Parameters) extends Module
+  with HasDecisionTreeParameters
+  with HasDecisionTreeIO {
 
   // ROM of decision tree nodes
   val decisionTreeRom = VecInit(decisionTreeNodes)
@@ -75,13 +84,14 @@ class DecisionTree(implicit val p: Parameters) extends Module with HasDecisionTr
   val nodeAddr  = WireDefault(0.U(nodeAddrWidth.W))
   val decision  = WireDefault(false.B)
 
-  io.in.ready  := false.B
-  io.out.valid := false.B
-  io.out.bits  := 0.U
+  io.in.ready  := state === idle
+  io.out.valid := state === done
+
+  io.out.bits  := node.featureClassIndex(classIndexWidth - 1, 0)
 
   // FSM
   when(state === idle) {
-    io.in.ready := true.B
+    //io.in.ready := true.B
     when(start) {
       state     := busy
       candidate := io.in.bits
@@ -100,10 +110,9 @@ class DecisionTree(implicit val p: Parameters) extends Module with HasDecisionTr
       node := Mux(decision, decisionTreeRom(node.leftNode), decisionTreeRom(node.rightNode))
     }
   }.elsewhen(state === done) {
-    io.out.valid := true.B
-    io.out.bits  := node.featureClassIndex(classIndexWidth - 1, 0)
-    when(rest) {
-      state := idle
-    }
+    //io.out.valid := true.B
+    state := idle
   }
+
+  io.busy := state =/= idle
 }

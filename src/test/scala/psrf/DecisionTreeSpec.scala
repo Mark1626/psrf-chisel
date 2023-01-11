@@ -23,7 +23,7 @@ class DecisionTreeSpec extends AnyFlatSpec with ChiselScalatestTester with Match
       p(FixedPointBinaryPoint).BP
     )
 
-    test(new DecisionTree()(p)).withAnnotations(annos) { dut =>
+    test(new DecisionTreeChiselModule()(p)).withAnnotations(annos) { dut =>
       dut.io.in.valid.poke(false.B)
       dut.io.in.ready.expect(true.B)
       dut.clock.step()
@@ -43,7 +43,7 @@ class DecisionTreeSpec extends AnyFlatSpec with ChiselScalatestTester with Match
     val annos      = Seq(WriteVcdAnnotation)
     val candidates = inCandidates.map(x => x.asFixedPointVecLit(p(FixedPointWidth).W, p(FixedPointBinaryPoint).BP))
 
-    test(new DecisionTree()(p)).withAnnotations(annos) { dut =>
+    test(new DecisionTreeChiselModule()(p)).withAnnotations(annos) { dut =>
       dut.io.in.initSource()
       dut.io.in.setSourceClock(dut.clock)
       dut.io.out.initSink()
@@ -255,7 +255,7 @@ class DecisionTreeSpec extends AnyFlatSpec with ChiselScalatestTester with Match
     val annos            = Seq(WriteVcdAnnotation)
     val candidate        = inCandidate.asFixedPointVecLit(p(FixedPointWidth).W, p(FixedPointBinaryPoint).BP)
 
-    test(new DecisionTree()(p)).withAnnotations(annos) { dut =>
+    test(new DecisionTreeChiselModule()(p)).withAnnotations(annos) { dut =>
       dut.io.in.valid.poke(false.B)
       dut.io.in.ready.expect(true.B)
       dut.clock.step()

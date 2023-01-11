@@ -1,5 +1,14 @@
 // See README.md for license details.
 
+organization := "com.thoughtworks"
+
+version := "0.1"
+
+name := "psrf-chisel"
+
+scalaVersion := "2.12.10"
+
+/*
 ThisBuild / scalaVersion := "2.12.13"
 ThisBuild / version      := "0.1.0"
 ThisBuild / organization := "com.thoughtworks"
@@ -26,3 +35,4 @@ lazy val root = (project in file("."))
     ),
     addCompilerPlugin(("edu.berkeley.cs" % "chisel3-plugin" % chiselVersion).cross(CrossVersion.full))
   )
+*/
