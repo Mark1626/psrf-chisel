@@ -1,9 +1,9 @@
-package psrf
+package psrf.params
 
-import chisel3._
+import chipsalliance.rocketchip.config.{Field, Parameters}
 import chisel3.util._
-import chisel3.experimental.FixedPoint
-import config.{Field, Parameters}
+import psrf.modules
+import psrf.modules.{DecisionTreeNode, TreeLiteral}
 
 case object NumFeatures           extends Field[Int]
 case object NumClasses            extends Field[Int]
@@ -22,6 +22,22 @@ trait HasDecisionTreeParams extends HasFixedPointParams {
   val numClasses = p(NumClasses)
   val numFeatures = p(NumFeatures)
   val classIndexWidth = log2Ceil(numClasses)
+}
+
+trait HasDecisionTreeParameters extends HasDecisionTreeParams {
+  val decisionTreeNodeLiterals = p(TreeLiteral)
+  val numNodes                 = decisionTreeNodeLiterals.length
+  val nodeAddrWidth            = log2Ceil(numNodes)
+  val featureIndexWidth        = log2Ceil(numFeatures)
+
+  def featureClassIndexWidth = math.max(featureIndexWidth, classIndexWidth)
+}
+
+/**
+ * Decision tree with predefined node during hardware resolution
+ */
+trait HasDecisionTreeWithNodesParameters extends HasDecisionTreeParameters {
+  def decisionTreeNodes      = decisionTreeNodeLiterals.map(modules.DecisionTreeNode(_, p))
 }
 
 trait HasRandomForestParams extends HasDecisionTreeParams {

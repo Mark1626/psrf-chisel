@@ -1,4 +1,4 @@
-package psrf
+package psrf.accelerator
 
 import chipsalliance.rocketchip.config.Parameters
 import chisel3._

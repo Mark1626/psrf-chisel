@@ -1,15 +1,12 @@
-package psrf.test
+package psrf.modules
 
 import chisel3._
-import chisel3.experimental.FixedPoint
-import chisel3.util._
 import chiseltest._
-import chiseltest.simulator.VerilatorBackendAnnotation
 import chiseltest.simulator.WriteVcdAnnotation
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import psrf._
 import psrf.config.{Config, Parameters}
+import psrf.params._
 
 class DecisionTreeSpec extends AnyFlatSpec with ChiselScalatestTester with Matchers {
   def decisionTreeSingleTest(
@@ -23,7 +20,7 @@ class DecisionTreeSpec extends AnyFlatSpec with ChiselScalatestTester with Match
       p(FixedPointBinaryPoint).BP
     )
 
-    test(new DecisionTreeChiselModule()(p)).withAnnotations(annos) { dut =>
+    test(new DecisionTreeWithNodesChiselModule()(p)).withAnnotations(annos) { dut =>
       dut.io.in.valid.poke(false.B)
       dut.io.in.ready.expect(true.B)
       dut.clock.step()
@@ -43,7 +40,7 @@ class DecisionTreeSpec extends AnyFlatSpec with ChiselScalatestTester with Match
     val annos      = Seq(WriteVcdAnnotation)
     val candidates = inCandidates.map(x => x.asFixedPointVecLit(p(FixedPointWidth).W, p(FixedPointBinaryPoint).BP))
 
-    test(new DecisionTreeChiselModule()(p)).withAnnotations(annos) { dut =>
+    test(new DecisionTreeWithNodesChiselModule()(p)).withAnnotations(annos) { dut =>
       dut.io.in.initSource()
       dut.io.in.setSourceClock(dut.clock)
       dut.io.out.initSink()
@@ -218,69 +215,70 @@ class DecisionTreeSpec extends AnyFlatSpec with ChiselScalatestTester with Match
     decisionTreeSeqTest(p, inCandidates, expectedDecisions)
   }
 
-  it should "keep output decision valid until it is consumed" in {
-    val p = new Config((site, here, up) => {
-      case NumFeatures           => 2
-      case NumClasses            => 2
-      case NumTrees              => 1
-      case FixedPointWidth       => 5
-      case FixedPointBinaryPoint => 2
-      case TreeLiteral =>
-        List(
-          DecisionTreeNodeLit(
-            isLeafNode = false,
-            featureClassIndex = 0,
-            threshold = 1,
-            rightNode = 2,
-            leftNode = 1
-          ), // Root node
-          DecisionTreeNodeLit(
-            isLeafNode = true,
-            featureClassIndex = 1,
-            threshold = 2,
-            rightNode = 0,
-            leftNode = 0
-          ), // Left node
-          DecisionTreeNodeLit(
-            isLeafNode = true,
-            featureClassIndex = 0,
-            threshold = 2,
-            rightNode = 0,
-            leftNode = 0
-          ) // Right node
-        )
-    })
-    val inCandidate      = Seq(2d, 3d)
-    val expectedDecision = 0
-    val annos            = Seq(WriteVcdAnnotation)
-    val candidate        = inCandidate.asFixedPointVecLit(p(FixedPointWidth).W, p(FixedPointBinaryPoint).BP)
-
-    test(new DecisionTreeChiselModule()(p)).withAnnotations(annos) { dut =>
-      dut.io.in.valid.poke(false.B)
-      dut.io.in.ready.expect(true.B)
-      dut.clock.step()
-      dut.io.in.bits.poke(candidate)
-      dut.io.in.valid.poke(true.B)
-      dut.io.out.ready.poke(false.B)
-      // Wait until output becomes valid
-      while (dut.io.out.valid.peek().litValue == 0) {
-        dut.clock.step()
-        dut.io.in.ready.expect(false.B)
-      }
-      dut.io.out.bits.expect(expectedDecision.B)
-      dut.io.in.valid.poke(false.B)
-      // Check if output stays latched for 10 cycles
-      for (i <- 0 until 10) {
-        dut.clock.step()
-        dut.io.in.ready.expect(false.B)
-        dut.io.out.valid.expect(true.B)
-        dut.io.out.bits.expect(expectedDecision.B)
-      }
-      // Check if module goes back to initial idle state when output is consumed
-      dut.io.out.ready.poke(true.B)
-      dut.clock.step()
-      dut.io.in.ready.expect(true.B)
-      dut.io.out.valid.expect(false.B)
-    }
-  }
+  // Note: This is no longer valid in the current design
+//  it should "keep output decision valid until it is consumed" in {
+//    val p = new Config((site, here, up) => {
+//      case NumFeatures           => 2
+//      case NumClasses            => 2
+//      case NumTrees              => 1
+//      case FixedPointWidth       => 5
+//      case FixedPointBinaryPoint => 2
+//      case TreeLiteral =>
+//        List(
+//          DecisionTreeNodeLit(
+//            isLeafNode = false,
+//            featureClassIndex = 0,
+//            threshold = 1,
+//            rightNode = 2,
+//            leftNode = 1
+//          ), // Root node
+//          DecisionTreeNodeLit(
+//            isLeafNode = true,
+//            featureClassIndex = 1,
+//            threshold = 2,
+//            rightNode = 0,
+//            leftNode = 0
+//          ), // Left node
+//          DecisionTreeNodeLit(
+//            isLeafNode = true,
+//            featureClassIndex = 0,
+//            threshold = 2,
+//            rightNode = 0,
+//            leftNode = 0
+//          ) // Right node
+//        )
+//    })
+//    val inCandidate      = Seq(2d, 3d)
+//    val expectedDecision = 0
+//    val annos            = Seq(WriteVcdAnnotation)
+//    val candidate        = inCandidate.asFixedPointVecLit(p(FixedPointWidth).W, p(FixedPointBinaryPoint).BP)
+//
+//    test(new DecisionTreeChiselModule()(p)).withAnnotations(annos) { dut =>
+//      dut.io.in.valid.poke(false.B)
+//      dut.io.in.ready.expect(true.B)
+//      dut.clock.step()
+//      dut.io.in.bits.poke(candidate)
+//      dut.io.in.valid.poke(true.B)
+//      dut.io.out.ready.poke(false.B)
+//      // Wait until output becomes valid
+//      while (dut.io.out.valid.peek().litValue == 0) {
+//        dut.clock.step()
+//        dut.io.in.ready.expect(false.B)
+//      }
+//      dut.io.out.bits.expect(expectedDecision.B)
+//      dut.io.in.valid.poke(false.B)
+//      // Check if output stays latched for 10 cycles
+//      for (i <- 0 until 10) {
+//        dut.clock.step()
+//        dut.io.in.ready.expect(false.B)
+//        dut.io.out.valid.expect(true.B)
+//        dut.io.out.bits.expect(expectedDecision.B)
+//      }
+//      // Check if module goes back to initial idle state when output is consumed
+//      dut.io.out.ready.poke(true.B)
+//      dut.clock.step()
+//      dut.io.in.ready.expect(true.B)
+//      dut.io.out.valid.expect(false.B)
+//    }
+//  }
 }

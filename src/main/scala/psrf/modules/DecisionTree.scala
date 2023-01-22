@@ -1,22 +1,13 @@
-package psrf
+package psrf.modules
 
-import chisel3._
-import chisel3.util._
-import chisel3.experimental.{BaseModule, FixedPoint}
+import chipsalliance.rocketchip.config.{Field, Parameters}
 import chisel3.experimental.BundleLiterals._
-import config.{Field, Parameters}
+import chisel3.experimental.{BaseModule, FixedPoint}
+import chisel3.util._
+import chisel3.{when, _}
+import psrf.params.{HasDecisionTreeParameters, HasDecisionTreeWithNodesParameters}
 
 case object TreeLiteral extends Field[List[DecisionTreeNodeLit]](Nil)
-
-trait HasDecisionTreeParameters extends HasDecisionTreeParams {
-  val decisionTreeNodeLiterals = p(TreeLiteral)
-  val numNodes                 = decisionTreeNodeLiterals.length
-  val nodeAddrWidth            = log2Ceil(numNodes)
-  val featureIndexWidth        = log2Ceil(numFeatures)
-
-  def featureClassIndexWidth = math.max(featureIndexWidth, classIndexWidth)
-  def decisionTreeNodes      = decisionTreeNodeLiterals.map(DecisionTreeNode(_, p))
-}
 
 /** Represent a literal node in a decision tree with Scala datatypes. */
 case class DecisionTreeNodeLit(
@@ -37,7 +28,7 @@ class DecisionTreeNode(implicit val p: Parameters) extends Bundle with HasDecisi
 
 object DecisionTreeNode {
 
-  /** Converts a literal decision tree node [[psrf.DecisionTreeNodeLit]] to chisel bundle [[psrf.DecisionTreeNode]].
+  /** Converts a literal decision tree node [[DecisionTreeNodeLit]] to chisel bundle [[DecisionTreeNode]].
     */
   def apply(n: DecisionTreeNodeLit, p: Parameters): DecisionTreeNode = {
     // TODO Fix this hack
@@ -64,10 +55,10 @@ trait HasDecisionTreeIO extends BaseModule {
 }
 
 /** Decision tree module which performs classification of an input candidate by traversing an internal ROM of
-  * [[psrf.DecisionTreeNode]].
+  * [[DecisionTreeNode]].
   */
-class DecisionTreeChiselModule(implicit val p: Parameters) extends Module
-  with HasDecisionTreeParameters
+class DecisionTreeWithNodesChiselModule(implicit val p: Parameters) extends Module
+  with HasDecisionTreeWithNodesParameters
   with HasDecisionTreeIO {
 
   // ROM of decision tree nodes

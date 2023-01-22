@@ -1,23 +1,25 @@
-package psrf
+package psrf.accelerator
 
+import chipsalliance.rocketchip.config.{Config, Field, Parameters}
 import chisel3._
 import chisel3.experimental.FixedPoint
-import config.{Field, Parameters, Config}
 import dspblocks._
 import dsptools.numbers._
 import freechips.rocketchip.amba.axi4stream.AXI4StreamIdentityNode
 import freechips.rocketchip.diplomacy.{AddressSet, LazyModule, LazyModuleImp}
 import freechips.rocketchip.subsystem.BaseSubsystem
 import freechips.rocketchip.tilelink.{TLBundle, TLClientPortParameters, TLEdgeIn, TLEdgeOut, TLFIFOFixer, TLManagerPortParameters}
+import psrf.modules.DecisionTreeWithNodesChiselModule
+import psrf.params.HasDecisionTreeWithNodesParameters
 
-case class StreamingDecisionTreeAccParams(
+case class StreamingDecisionTreeWithNodesAccParameters(
   writeAddress: BigInt = 0x2000,
   readAddress: BigInt = 0x2100,
   depth: Int,
   p: Parameters
-) extends HasDecisionTreeParameters
+) extends HasDecisionTreeWithNodesParameters
 
-case object StreamingDecisionTreeAccKey extends Field[Option[StreamingDecisionTreeAccParams]](None)
+case object StreamingDecisionTreeAccKey extends Field[Option[StreamingDecisionTreeWithNodesAccParameters]](None)
 
 class StreamingDecisionTreeAccBundle(w: Int, bp: Int) extends Bundle {
   val data = FixedPoint(w.W, bp.BP)
@@ -37,7 +39,7 @@ abstract class StreamingDecisionTreeBlock[D, U, EO, EI, B<:Data, T<:Data:Ring]
 )(implicit p: Parameters) extends DspBlock[D, U, EO, EI, B] {
   val streamNode = AXI4StreamIdentityNode()
   val mem = None
-  def params: StreamingDecisionTreeAccParams
+  def params: StreamingDecisionTreeWithNodesAccParameters
 
   lazy val module = new LazyModuleImp(this) {
 
@@ -47,7 +49,7 @@ abstract class StreamingDecisionTreeBlock[D, U, EO, EI, B<:Data, T<:Data:Ring]
     val in = streamNode.in.head._1
     val out = streamNode.out.head._1
 
-    val decisionTree = Module(new DecisionTreeChiselModule()(params.p))
+    val decisionTree = Module(new DecisionTreeWithNodesChiselModule()(params.p))
     val features = Reg(Vec(params.numFeatures, proto.cloneType))
 
     when (in.valid) {
@@ -74,12 +76,12 @@ abstract class StreamingDecisionTreeBlock[D, U, EO, EI, B<:Data, T<:Data:Ring]
 class TLStreamingDecisionTreeBlock[T<:Data:Ring]
 (
   val proto: T,
-  val params: StreamingDecisionTreeAccParams
+  val params: StreamingDecisionTreeWithNodesAccParameters
 )(implicit p: Parameters) extends
   StreamingDecisionTreeBlock[TLClientPortParameters, TLManagerPortParameters, TLEdgeOut, TLEdgeIn, TLBundle, T](proto)
   with TLDspBlock
 
-class TLStreamingDecisionTreeChain[T<:Data:Ring](proto: T, params: StreamingDecisionTreeAccParams)(implicit p: Parameters)
+class TLStreamingDecisionTreeChain[T<:Data:Ring](proto: T, params: StreamingDecisionTreeWithNodesAccParameters)(implicit p: Parameters)
   extends TLChain(Seq(
     TLWriteQueueWithLast(params.depth, AddressSet(params.writeAddress, 0xff))(_),
     { implicit p: Parameters =>
@@ -103,5 +105,5 @@ trait CanHavePeripheryStreamingDecisionTree { this: BaseSubsystem =>
 }
 
 class WithStreamingDecisionTree(p: Parameters) extends Config((site, here, up) => {
-  case StreamingDecisionTreeAccKey => Some(StreamingDecisionTreeAccParams(depth = 16, p=p))
+  case StreamingDecisionTreeAccKey => Some(StreamingDecisionTreeWithNodesAccParameters(depth = 16, p=p))
 })
