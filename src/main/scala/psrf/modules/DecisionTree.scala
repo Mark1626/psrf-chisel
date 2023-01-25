@@ -20,7 +20,7 @@ case class DecisionTreeNodeLit(
 /** Represent a node in a decision tree as Chisel data. */
 class DecisionTreeNode(implicit val p: Parameters) extends Bundle with HasDecisionTreeParameters {
   val isLeafNode        = Bool()
-  val featureClassIndex = UInt()
+  val featureClassIndex = UInt(featureClassIndexWidth.W)
   val threshold         = FixedPoint(fixedPointWidth.W, fixedPointBinaryPoint.BP)
   val rightNode         = UInt(nodeAddrWidth.W)
   val leftNode          = UInt(nodeAddrWidth.W)

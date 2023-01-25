@@ -31,6 +31,7 @@ trait HasDecisionTreeParameters extends HasDecisionTreeParams {
   val featureIndexWidth        = log2Ceil(numFeatures)
 
   def featureClassIndexWidth = math.max(featureIndexWidth, classIndexWidth)
+  def nodeWidth = 1 + featureClassIndexWidth + fixedPointWidth + nodeAddrWidth + nodeAddrWidth
 }
 
 /**
