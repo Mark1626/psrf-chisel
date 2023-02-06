@@ -22,23 +22,20 @@ trait HasDecisionTreeParams extends HasFixedPointParams {
   val numClasses = p(NumClasses)
   val numFeatures = p(NumFeatures)
   val classIndexWidth = log2Ceil(numClasses)
-}
-
-trait HasDecisionTreeParameters extends HasDecisionTreeParams {
-  val decisionTreeNodeLiterals = p(TreeLiteral)
-  val numNodes                 = decisionTreeNodeLiterals.length
-  val nodeAddrWidth            = log2Ceil(numNodes)
-  val featureIndexWidth        = log2Ceil(numFeatures)
+  val featureIndexWidth = log2Ceil(numFeatures)
 
   def featureClassIndexWidth = math.max(featureIndexWidth, classIndexWidth)
-  def nodeWidth = 1 + featureClassIndexWidth + fixedPointWidth + nodeAddrWidth + nodeAddrWidth
 }
 
 /**
  * Decision tree with predefined node during hardware resolution
  */
-trait HasDecisionTreeWithNodesParameters extends HasDecisionTreeParameters {
+trait HasDecisionTreeWithNodesParameters extends HasDecisionTreeParams {
+  val decisionTreeNodeLiterals = p(TreeLiteral)
+  val numNodes = decisionTreeNodeLiterals.length
+  val nodeAddrWidth = log2Ceil(numNodes)
   def decisionTreeNodes      = decisionTreeNodeLiterals.map(modules.DecisionTreeNode(_, p))
+  def nodeWidth = 1 + featureClassIndexWidth + fixedPointWidth + nodeAddrWidth + nodeAddrWidth
 }
 
 trait HasRandomForestParams extends HasDecisionTreeParams {

@@ -5,7 +5,7 @@ import chisel3.experimental.BundleLiterals._
 import chisel3.experimental.{BaseModule, FixedPoint}
 import chisel3.util._
 import chisel3.{when, _}
-import psrf.params.{HasDecisionTreeParameters, HasDecisionTreeWithNodesParameters}
+import psrf.params.{HasDecisionTreeWithNodesParameters}
 
 case object TreeLiteral extends Field[List[DecisionTreeNodeLit]](Nil)
 
@@ -18,7 +18,7 @@ case class DecisionTreeNodeLit(
   leftNode:          Int)
 
 /** Represent a node in a decision tree as Chisel data. */
-class DecisionTreeNode(implicit val p: Parameters) extends Bundle with HasDecisionTreeParameters {
+class DecisionTreeNode(implicit val p: Parameters) extends Bundle with HasDecisionTreeWithNodesParameters {
   val isLeafNode        = Bool()
   val featureClassIndex = UInt(featureClassIndexWidth.W)
   val threshold         = FixedPoint(fixedPointWidth.W, fixedPointBinaryPoint.BP)
@@ -43,7 +43,7 @@ object DecisionTreeNode {
   }
 }
 
-class DecisionTreeIO()(implicit val p: Parameters) extends Bundle with HasDecisionTreeParameters {
+class DecisionTreeIO()(implicit val p: Parameters) extends Bundle with HasDecisionTreeWithNodesParameters {
   val in = Flipped(Decoupled(Vec(numFeatures, FixedPoint(fixedPointWidth.W, fixedPointBinaryPoint.BP))))
   val out = Decoupled(UInt(classIndexWidth.W))
   val busy = Output(Bool())
