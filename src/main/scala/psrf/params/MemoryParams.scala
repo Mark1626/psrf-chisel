@@ -15,3 +15,17 @@ trait RAMBankParams {
 
   val addrWidth = log2Ceil(ramSize)
 }
+
+case object BusWidth extends Field[Int]
+
+trait BusParams {
+  implicit val p: Parameters
+  val busWidth = p(BusWidth)
+}
+
+case object RAMSize extends Field[Int]
+
+trait RAMParams {
+  implicit val p: Parameters
+  val ramSize = p(RAMSize)
+}

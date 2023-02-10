@@ -1,11 +1,12 @@
 package psrf.modules
 
+import Chisel.RegNext
 import chipsalliance.rocketchip.config.{Field, Parameters}
 import chisel3._
 import chisel3.experimental.FixedPoint
 import chisel3.util._
-import psrf.bus.{BusParams, WishboneMaster}
-import psrf.params.{HasDecisionTreeParams, HasFixedPointParams}
+import psrf.bus.WishboneMaster
+import psrf.params.{BusParams, HasFixedPointParams}
 
 case class DecisionTreeConfig(
   maxFeatures: Int,
@@ -111,12 +112,11 @@ class WishboneDecisionTree(val offset: Int)(implicit val p: Parameters) extends 
     node_rd   := node
     val featureIndex = node.featureClassIndex
     val featureValue = candidate(featureIndex) // TODO: Can this result in an exception
-    val threshold = node.threshold
 
     when (node.isLeafNode) {
       state := done
     } .otherwise {
-      val jumpOffset: UInt = Mux(featureValue <= threshold, node.leftNode, node.rightNode)
+      val jumpOffset: UInt = Mux(featureValue <= node.threshold, node.leftNode, node.rightNode)
       nodeAddr := offset.U + jumpOffset.asUInt
       state := bus_req
     }

@@ -1,14 +1,10 @@
 package psrf.modules
 
 import chisel3._
-import chisel3.util._
 import chipsalliance.rocketchip.config.{Config, Parameters}
-import chisel3.experimental.FixedPoint
 import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.freespec.AnyFreeSpec
-import psrf.bus.BusWidth
-import psrf.params.{FixedPointBinaryPoint, FixedPointWidth}
+import psrf.params.{BusWidth, FixedPointBinaryPoint, FixedPointWidth}
 
 // TODO: Should this be in src
 case class TreeNodeLit(

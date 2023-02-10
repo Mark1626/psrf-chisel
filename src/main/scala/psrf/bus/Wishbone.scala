@@ -29,10 +29,3 @@ class WishboneSlave(val busWidth: Int) extends Bundle {
 class WishboneMaster(val busWidth: Int) extends Bundle {
   val bus = Flipped(new WishboneBundle(busWidth))
 }
-
-case object BusWidth extends Field[Int]
-
-trait BusParams {
-  implicit val p: Parameters
-  val busWidth = p(BusWidth)
-}
