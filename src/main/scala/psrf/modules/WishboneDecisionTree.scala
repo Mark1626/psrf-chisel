@@ -34,11 +34,16 @@ trait HasVariableDecisionTreeParams extends HasFixedPointParams {
   assert(featureClassIndexWidth <= 11)
 }
 
+class TreeInputBundle()(implicit val p: Parameters) extends Bundle with HasVariableDecisionTreeParams {
+  val candidates = Vec(maxFeatures, FixedPoint(fixedPointWidth.W, fixedPointBinaryPoint.BP))
+  val offset = UInt(32.W)
+}
+
 // TODO: The width of in interface should be reduced, we are assuming that
 //  our features are going to be less. This potentially can be a Wishbone Slave
 //
 class TreeIO()(implicit val p: Parameters) extends Bundle with HasVariableDecisionTreeParams {
-  val in = Flipped(Decoupled(Vec(maxFeatures, FixedPoint(fixedPointWidth.W, fixedPointBinaryPoint.BP))))
+  val in = Flipped(Decoupled(new TreeInputBundle()))
   val out = Decoupled(UInt(9.W))
   val busy = Output(Bool())
 }
@@ -53,7 +58,7 @@ class TreeNode()(implicit val p: Parameters) extends Bundle with HasVariableDeci
   val rightNode = UInt(11.W)
 }
 
-class WishboneDecisionTree(val offset: Int)(implicit val p: Parameters) extends Module
+class WishboneDecisionTree()(implicit val p: Parameters) extends Module
   with HasVariableDecisionTreeParams
   with BusParams {
 
@@ -74,7 +79,8 @@ class WishboneDecisionTree(val offset: Int)(implicit val p: Parameters) extends 
 
   // TODO: Init this to 0
   val node_rd = Reg(new TreeNode()(p))
-  val nodeAddr = RegInit(offset.U(busWidth.W))
+  val nodeAddr = RegInit(0.U(busWidth.W))
+  val offset = Reg(UInt(32.W))
   val decision = WireDefault(false.B)
 
   // Bus info
@@ -98,8 +104,9 @@ class WishboneDecisionTree(val offset: Int)(implicit val p: Parameters) extends 
   // FSM
   when (state === idle && io.up.in.fire) {
     // Decision Tree init
-    candidate := io.up.in.bits
-    nodeAddr := offset.U // This will change to be an offset for each tree
+    candidate := io.up.in.bits.candidates
+    offset := io.up.in.bits.offset
+    nodeAddr := io.up.in.bits.offset
 
     state := bus_req
   } .elsewhen (state === bus_req) {
@@ -117,7 +124,7 @@ class WishboneDecisionTree(val offset: Int)(implicit val p: Parameters) extends 
       state := done
     } .otherwise {
       val jumpOffset: UInt = Mux(featureValue <= node.threshold, node.leftNode, node.rightNode)
-      nodeAddr := offset.U + jumpOffset.asUInt
+      nodeAddr := offset + jumpOffset.asUInt
       state := bus_req
     }
 

@@ -70,7 +70,7 @@ class WishboneDecisionTreeSpec extends AnyFlatSpec with ChiselScalatestTester {
   })
 
   it should "return candidate when at leaf node" in {
-    test(new WishboneDecisionTree(0)(p))
+    test(new WishboneDecisionTree()(p))
       .withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
         val helper = new WishboneDecisionTreeHelper(dut)
 
@@ -84,7 +84,8 @@ class WishboneDecisionTreeSpec extends AnyFlatSpec with ChiselScalatestTester {
 
         dut.io.up.in.ready.expect(true.B)
 
-        dut.io.up.in.bits.poke(candidate)
+        dut.io.up.in.bits.offset.poke(0.U)
+        dut.io.up.in.bits.candidates.poke(candidate)
         dut.io.up.in.valid.poke(true.B)
         dut.clock.step()
 
@@ -105,7 +106,7 @@ class WishboneDecisionTreeSpec extends AnyFlatSpec with ChiselScalatestTester {
   }
 
   it should "go to left node and give correct decision" in {
-    test(new WishboneDecisionTree(0)(p))
+    test(new WishboneDecisionTree()(p))
       .withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
         val helper = new WishboneDecisionTreeHelper(dut)
 
@@ -120,7 +121,8 @@ class WishboneDecisionTreeSpec extends AnyFlatSpec with ChiselScalatestTester {
         dut.io.up.in.initSource()
         dut.io.up.out.ready.poke(true.B)
 
-        dut.io.up.in.bits.poke(candidate)
+        dut.io.up.in.bits.offset.poke(0.U)
+        dut.io.up.in.bits.candidates.poke(candidate)
         dut.io.up.in.valid.poke(true.B)
         dut.clock.step()
 
@@ -149,7 +151,7 @@ class WishboneDecisionTreeSpec extends AnyFlatSpec with ChiselScalatestTester {
   }
 
   it should "go to right node and give correct decision" in {
-    test(new WishboneDecisionTree(0)(p))
+    test(new WishboneDecisionTree()(p))
       .withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
         val helper = new WishboneDecisionTreeHelper(dut)
 
@@ -164,7 +166,8 @@ class WishboneDecisionTreeSpec extends AnyFlatSpec with ChiselScalatestTester {
         dut.io.up.in.initSource()
         dut.io.up.out.ready.poke(true.B)
 
-        dut.io.up.in.bits.poke(candidate)
+        dut.io.up.in.bits.offset.poke(0.U)
+        dut.io.up.in.bits.candidates.poke(candidate)
         dut.io.up.in.valid.poke(true.B)
         dut.clock.step()
 
