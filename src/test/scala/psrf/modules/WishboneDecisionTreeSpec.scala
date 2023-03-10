@@ -100,7 +100,7 @@ class WishboneDecisionTreeSpec extends AnyFlatSpec with ChiselScalatestTester {
         dut.io.down.bus.cyc.expect(false.B)
         dut.io.down.bus.ack.poke(false.B)
 
-        while (dut.io.up.out.valid.peek() == false.B) { dut.clock.step() }
+        while (!dut.io.up.out.valid.peekBoolean()) { dut.clock.step() }
         dut.io.up.out.bits.expect(2)
       }
   }
@@ -143,7 +143,7 @@ class WishboneDecisionTreeSpec extends AnyFlatSpec with ChiselScalatestTester {
         dut.io.down.bus.cyc.expect(false.B)
         dut.io.down.bus.ack.poke(false.B)
 
-        while (dut.io.up.out.valid.peek() == false.B) {
+        while (!dut.io.up.out.valid.peekBoolean()) {
           dut.clock.step()
         }
         dut.io.up.out.bits.expect(2)
@@ -188,7 +188,7 @@ class WishboneDecisionTreeSpec extends AnyFlatSpec with ChiselScalatestTester {
         dut.io.down.bus.cyc.expect(false.B)
         dut.io.down.bus.ack.poke(false.B)
 
-        while (dut.io.up.out.valid.peek() == false.B) {
+        while (!dut.io.up.out.valid.peekBoolean()) {
           dut.clock.step()
         }
         dut.io.up.out.bits.expect(3)

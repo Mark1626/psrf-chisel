@@ -96,6 +96,7 @@ class WishboneDecisionTree()(implicit val p: Parameters) extends Module
   // Top IO Handling
   io.up.in.ready := state === idle
 
+  // TODO: io.up.out.ready has to be validated
   io.up.out.valid := state === done
   io.up.out.bits := node_rd.featureClassIndex
 

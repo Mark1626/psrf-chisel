@@ -7,6 +7,18 @@ import chisel3.experimental.FixedPoint
 import psrf.bus.WishboneSlave
 import psrf.params.{BusParams, RAMParams}
 
+class Candidate()(implicit val p: Parameters) extends Bundle with HasVariableDecisionTreeParams {
+  val data = FixedPoint(fixedPointWidth.W, fixedPointBinaryPoint.BP)
+}
+
+object MMIO_ADDR {
+  val CSR = 0x00
+  val CHANGE_MODE = 0x04
+  val CANDIDATE_IN = 0x10
+  val DECISION = 0x14
+  val WEIGHTS_IN = 0x1C
+}
+
 /**
   *
   * MMIO Layout
@@ -32,15 +44,15 @@ class WishboneDecisionTreeTile()(implicit val p: Parameters) extends Module
   val io = IO(new WishboneSlave(busWidth))
 
   val ack = RegInit(false.B)
-  val data_rd = RegInit(UInt(busWidth.W))
+  val data_rd = RegInit(0.U(busWidth.W))
 
   val weWeights :: operational :: Nil = Enum(2)
-  val mode = RegInit(operational)
+  val mode = RegInit(weWeights)
 
   val idle :: busy :: done :: Nil = Enum(3)
   val state = RegInit(idle)
 
-  //val decisionTree = new WishboneDecisionTree()(p)
+//  val decisionTree = new WishboneDecisionTree()(p)
 
   val candidate = Reg(Vec(maxFeatures, FixedPoint(fixedPointWidth.W, fixedPointBinaryPoint.BP)))
   val decision = Reg(UInt(32.W))
@@ -49,23 +61,28 @@ class WishboneDecisionTreeTile()(implicit val p: Parameters) extends Module
   io.bus.ack := ack
   // TODO: Write the error scenario
   io.bus.err := false.B
+  io.bus.stall := false.B
 
-  val sel = io.bus.addr(35, 32)
+  val sel = io.bus.addr(40, 32)
+  ack := false.B
   when (io.bus.stb && io.bus.cyc && !io.bus.ack) {
     data_rd := 0.U(busWidth.W)
     switch (sel) {
-      is (0x0.U) { data_rd := Cat(0.U(61.W), mode, false.B, false.B) }
-      is (0x14.U) { data_rd := Cat(0.U(32.W), decision) }
+      is (MMIO_ADDR.CSR.U) { data_rd := Cat(0.U(61.W), mode, state === idle, false.B) }
+      is (MMIO_ADDR.DECISION.U) { data_rd := Cat(0.U(32.W), decision) }
     }
 
     when (io.bus.we) {
       switch (sel) {
-        is (0x04.U) { mode := Mux(io.bus.data_wr(32) === 0.U, weWeights, operational) }
-        is (0x10.U) {
-          // TODO: Should I restrict this
-          val candidateId = io.bus.data_wr(63, 32)
-          val candidateValue = io.bus.data_wr(31, 0)
-          candidate(candidateId) := candidateValue
+        is (MMIO_ADDR.CHANGE_MODE.U) { mode := Mux(io.bus.data_wr(0) === 0.U, weWeights, operational) }
+        is (MMIO_ADDR.CANDIDATE_IN.U) {
+          when (state === idle) {
+            val last = io.bus.data_wr(50)
+            val candidateId = io.bus.data_wr(49, 32)
+            val candidateValue = io.bus.data_wr(31, 0)
+            candidate(candidateId) := candidateValue.asTypeOf(new Candidate()(p).data)
+            state := Mux(last === true.B, busy, idle)
+          }
         }
         // TODO: Ack should be delay in DMA
 //        is (0x1C) {
