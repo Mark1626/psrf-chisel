@@ -8,17 +8,7 @@ import chiseltest.ChiselScalatestTester
 import org.scalatest.flatspec.AnyFlatSpec
 import psrf.params.{BusWidth, FixedPointBinaryPoint, FixedPointWidth, RAMSize}
 
-object Constants {
-  val fpWidth = 32
-  val bpWidth = 16
-  val CSR_ADDR: Long = 0x00L
-  val MODE_CHANGE: Long = 0x04L << 32
-  val CANDIDATE_IN: Long = 0x10L << 32
-  val OPERATIONAL_STATE = 1;
-  val WE_WEIGHTS_STATE = 0;
-}
-
-class WishboneRandomForestSpecHelper(val dut: WishboneDecisionTreeTile) {
+class WishboneRandomForestSpecHelper(val dut: WishboneRandomForest) {
 
   def toFixedPoint(x: Double, scale: Long): Long = {
     val BP_SCALE = 1L << scale
@@ -85,7 +75,7 @@ class WishboneRandomForestSpec extends AnyFlatSpec with ChiselScalatestTester {
   })
 
   it should "be able in weWeights state when begin" in {
-    test(new WishboneDecisionTreeTile()(params))
+    test(new WishboneRandomForest()(params))
       .withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
         val helper = new WishboneRandomForestSpecHelper(dut)
 
@@ -95,7 +85,7 @@ class WishboneRandomForestSpec extends AnyFlatSpec with ChiselScalatestTester {
   }
 
   it should "move to operational state when change mode is triggered" in {
-    test(new WishboneDecisionTreeTile()(params))
+    test(new WishboneRandomForest()(params))
       .withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
         val helper = new WishboneRandomForestSpecHelper(dut)
 
@@ -106,9 +96,8 @@ class WishboneRandomForestSpec extends AnyFlatSpec with ChiselScalatestTester {
       }
   }
 
-  // TODO: We do not
   it should "be able to store candidates" in {
-    test(new WishboneDecisionTreeTile()(params))
+    test(new WishboneRandomForest()(params))
       .withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
         val helper = new WishboneRandomForestSpecHelper(dut)
 
@@ -136,5 +125,19 @@ class WishboneRandomForestSpec extends AnyFlatSpec with ChiselScalatestTester {
     }
   }
 
-  // TODO: Add test should not accept candidates when in busy state
+  // TODO: Revisit if we need to send err from the wishbone bus when unknown bus is accessed
+//  it should "return wishbone err when unknown address is accessed" in {
+//
+//  }
+
+//  it should "be able to write/read weights into the RAM" in {
+//    test(new WishboneRandomForest()(params))
+//      .withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+//        val helper = new WishboneRandomForestSpecHelper(dut)
+//        helper.wishboneWrite(Constants.WEIGHTS_IN, 10)
+//
+//        val res = helper.wishboneRead(Constants.WEIGHTS_OUT)
+//        res.expect(10)
+//      }
+//  }
 }

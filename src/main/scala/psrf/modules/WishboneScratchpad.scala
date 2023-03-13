@@ -5,7 +5,7 @@ import chipsalliance.rocketchip.config.Parameters
 import psrf.bus.WishboneSlave
 import psrf.params.{BusParams, RAMParams}
 
-class WishboneRAM()(implicit val p: Parameters) extends Module
+class WishboneScratchpad()(implicit val p: Parameters) extends Module
   with BusParams
   with RAMParams {
   val io = IO(new WishboneSlave(busWidth))

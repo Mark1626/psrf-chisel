@@ -6,7 +6,7 @@ import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
 import psrf.params.{BusWidth, RAMSize}
 
-class WishboneRAMHelper(dut: WishboneRAM) {
+class WishboneRAMHelper(dut: WishboneScratchpad) {
   def wishboneWrite(addr: Long, data: Long): Unit = {
     dut.io.bus.addr.poke(addr)
     dut.io.bus.data_wr.poke(data)
@@ -45,14 +45,14 @@ class WishboneRAMHelper(dut: WishboneRAM) {
   }
 }
 
-class WishboneRAMSpec extends AnyFlatSpec with ChiselScalatestTester {
+class WishboneScratchpadSpec extends AnyFlatSpec with ChiselScalatestTester {
   val p: Parameters = new Config((site, here, up) => {
     case RAMSize => 1024
     case BusWidth => 64
   })
 
   it should "be able to write and read" in {
-    test(new WishboneRAM()(p))
+    test(new WishboneScratchpad()(p))
       .withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
 
         dut.clock.step()

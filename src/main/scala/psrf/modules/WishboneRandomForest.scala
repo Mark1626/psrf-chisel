@@ -17,8 +17,10 @@ object MMIO_ADDR {
   val CANDIDATE_IN = 0x10
   val DECISION = 0x14
   val WEIGHTS_IN = 0x1C
+  val WEIGHTS_OUT = 0x20
 }
 
+// Note: When state is busy and candidates in is set value is ignored
 /**
   *
   * MMIO Layout
@@ -31,13 +33,13 @@ object MMIO_ADDR {
   * 0x10  = W = Candidate In   = {last, idx, candidate}
   * 0x14  = R = Decision       = Final Decision
   * 0x1C  = W = Weights In     = {1'threshold, 9'featureClass, 32'threshold, 11'leftNode, 11'rightNode}
-  * 0x20 =
+  * 0x20  = R = Weights Out    = {1'threshold, 9'featureClass, 32'threshold, 11'leftNode, 11'rightNode}
   *
   * Error and Exceptions
   * // TODO: Add Error Registerss
   *
   */
-class WishboneDecisionTreeTile()(implicit val p: Parameters) extends Module
+class WishboneRandomForest()(implicit val p: Parameters) extends Module
   with HasVariableDecisionTreeParams
   with BusParams
   with RAMParams {
@@ -52,7 +54,7 @@ class WishboneDecisionTreeTile()(implicit val p: Parameters) extends Module
   val idle :: busy :: done :: Nil = Enum(3)
   val state = RegInit(idle)
 
-//  val decisionTree = new WishboneDecisionTree()(p)
+//  val decisionTree = Module(new WishboneDecisionTree()(p))
 
   val candidate = Reg(Vec(maxFeatures, FixedPoint(fixedPointWidth.W, fixedPointBinaryPoint.BP)))
   val decision = Reg(UInt(32.W))
@@ -70,6 +72,7 @@ class WishboneDecisionTreeTile()(implicit val p: Parameters) extends Module
     switch (sel) {
       is (MMIO_ADDR.CSR.U) { data_rd := Cat(0.U(61.W), mode, state === idle, false.B) }
       is (MMIO_ADDR.DECISION.U) { data_rd := Cat(0.U(32.W), decision) }
+//      is (MMIO_ADDR.WEIGHTS_OUT.U) { data_rd :=  }
     }
 
     when (io.bus.we) {
