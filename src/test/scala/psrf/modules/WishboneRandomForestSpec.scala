@@ -130,14 +130,17 @@ class WishboneRandomForestSpec extends AnyFlatSpec with ChiselScalatestTester {
 //
 //  }
 
-//  it should "be able to write/read weights into the RAM" in {
-//    test(new WishboneRandomForest()(params))
-//      .withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
-//        val helper = new WishboneRandomForestSpecHelper(dut)
-//        helper.wishboneWrite(Constants.WEIGHTS_IN, 10)
-//
-//        val res = helper.wishboneRead(Constants.WEIGHTS_OUT)
-//        res.expect(10)
-//      }
-//  }
+  it should "be able to write/read weights into the RAM" in {
+    test(new WishboneRandomForest()(params))
+      .withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+        val helper = new WishboneRandomForestSpecHelper(dut)
+
+        val weightAddr = 10
+
+        helper.wishboneWrite(Constants.WEIGHTS_IN + weightAddr, 10)
+
+        val res = helper.wishboneRead(Constants.WEIGHTS_OUT + weightAddr)
+        res.expect(10)
+      }
+  }
 }

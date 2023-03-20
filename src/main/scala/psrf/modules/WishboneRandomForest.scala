@@ -54,10 +54,18 @@ class WishboneRandomForest()(implicit val p: Parameters) extends Module
   val idle :: busy :: done :: Nil = Enum(3)
   val state = RegInit(idle)
 
-//  val decisionTree = Module(new WishboneDecisionTree()(p))
+  val decisionTreeTile = Module(new DecisionTreeTile()(p))
 
   val candidate = Reg(Vec(maxFeatures, FixedPoint(fixedPointWidth.W, fixedPointBinaryPoint.BP)))
   val decision = Reg(UInt(32.W))
+
+  // Connection to tiles
+  decisionTreeTile.io.operational := mode === operational
+  decisionTreeTile.io.tree <> DontCare
+  decisionTreeTile.io.up <> io
+  decisionTreeTile.io.up.bus.addr := io.bus.addr(31, 0)
+  decisionTreeTile.io.up.bus.stb := false.B
+  decisionTreeTile.io.up.bus.cyc := false.B
 
   io.bus.data_rd := data_rd
   io.bus.ack := ack
@@ -65,14 +73,24 @@ class WishboneRandomForest()(implicit val p: Parameters) extends Module
   io.bus.err := false.B
   io.bus.stall := false.B
 
+  // Address Decoder
   val sel = io.bus.addr(40, 32)
   ack := false.B
+
+  // WB Transaction for accelerator top
   when (io.bus.stb && io.bus.cyc && !io.bus.ack) {
+    ack := true.B
     data_rd := 0.U(busWidth.W)
+
     switch (sel) {
       is (MMIO_ADDR.CSR.U) { data_rd := Cat(0.U(61.W), mode, state === idle, false.B) }
       is (MMIO_ADDR.DECISION.U) { data_rd := Cat(0.U(32.W), decision) }
-//      is (MMIO_ADDR.WEIGHTS_OUT.U) { data_rd :=  }
+      is (MMIO_ADDR.WEIGHTS_OUT.U) {
+        decisionTreeTile.io.up.bus.stb := true.B
+        decisionTreeTile.io.up.bus.cyc := true.B
+        ack := decisionTreeTile.io.up.bus.ack
+        data_rd := decisionTreeTile.io.up.bus.data_rd
+      }
     }
 
     when (io.bus.we) {
@@ -87,14 +105,13 @@ class WishboneRandomForest()(implicit val p: Parameters) extends Module
             state := Mux(last === true.B, busy, idle)
           }
         }
-        // TODO: Ack should be delay in DMA
-//        is (0x1C) {
-//
-//        }
+        is (MMIO_ADDR.WEIGHTS_IN.U) {
+          decisionTreeTile.io.up.bus.stb := true.B
+          decisionTreeTile.io.up.bus.cyc := true.B
+          ack := decisionTreeTile.io.up.bus.ack
+        }
       }
     }
-
-    ack := true.B
   }
 
 }
