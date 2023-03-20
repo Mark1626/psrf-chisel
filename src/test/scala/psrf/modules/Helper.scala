@@ -45,6 +45,7 @@ object Constants {
   val CSR_ADDR: Long = 0x00L
   val MODE_CHANGE: Long = 0x04L << 32
   val CANDIDATE_IN: Long = 0x10L << 32
+  val DECISION_ADDR: Long = 0x14L << 32
   val WEIGHTS_IN: Long = 0x1CL << 32
   val WEIGHTS_OUT: Long = 0x20L << 32
   val OPERATIONAL_STATE = 1;

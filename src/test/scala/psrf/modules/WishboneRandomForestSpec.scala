@@ -31,7 +31,7 @@ class WishboneRandomForestSpecHelper(val dut: WishboneRandomForest) {
     toFixedPoint(value, Constants.bpWidth) + (id << 32) +  (last << 50)
   }
 
-  def wishboneWrite(addr: Long, data: Long): Unit = {
+  def wishboneWrite(addr: Long, data: BigInt): Unit = {
     dut.io.bus.addr.poke(addr)
     dut.io.bus.data_wr.poke(data)
     dut.io.bus.we.poke(true.B)
@@ -42,6 +42,10 @@ class WishboneRandomForestSpecHelper(val dut: WishboneRandomForest) {
     dut.io.bus.stb.poke(false.B)
     dut.clock.step()
     dut.io.bus.ack.expect(false.B)
+  }
+
+  def wishboneWrite(addr: Long, node: TreeNodeLit): Unit = {
+    wishboneWrite(addr, node.toBinary)
   }
 
   def wishboneRead(addr: Long): UInt = {
@@ -141,6 +145,51 @@ class WishboneRandomForestSpec extends AnyFlatSpec with ChiselScalatestTester {
 
         val res = helper.wishboneRead(Constants.WEIGHTS_OUT + weightAddr)
         res.expect(10)
+      }
+  }
+
+  it should "be able to store weights and run decision tree" in {
+    test(new WishboneRandomForest()(params))
+      .withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+        val helper = new WishboneRandomForestSpecHelper(dut)
+
+        val inCandidates = Seq(0.5, 2)
+        val treeNode0 = TreeNodeLit(0, 0, Helper.toFixedPoint(0.5, Constants.bpWidth), 1, 2)
+        val treeNode1 = TreeNodeLit(1, 2, Helper.toFixedPoint(0, Constants.bpWidth), -1, -1)
+
+        helper.wishboneWrite(Constants.WEIGHTS_IN, treeNode0)
+        helper.wishboneWrite(Constants.WEIGHTS_IN + 1, treeNode1)
+
+        helper.wishboneWrite(Constants.MODE_CHANGE, Constants.OPERATIONAL_STATE)
+
+        // Check if it's operational
+        var resp = helper.wishboneRead(Constants.CSR_ADDR).peekInt()
+        var states = helper.parseCSR(resp)
+        assert(states._1 == Constants.OPERATIONAL_STATE)
+        assert(states._2 == 1)
+
+        // Write candidates into the accelerator
+        helper.wishboneWrite(Constants.CANDIDATE_IN, helper.createCandidate(inCandidates(0), 0L))
+        helper.wishboneWrite(Constants.CANDIDATE_IN, helper.createCandidate(inCandidates(1), 1L, last = 1L))
+
+        // After candidate CSR should be busy
+        resp = helper.wishboneRead(Constants.CSR_ADDR).peekInt()
+        states = helper.parseCSR(resp)
+        assert(states._1 == Constants.OPERATIONAL_STATE)
+        assert(states._2 == 0)
+
+
+        dut.clock.step(10)
+
+        resp = helper.wishboneRead(Constants.CSR_ADDR).peekInt()
+        states = helper.parseCSR(resp)
+        assert(states._1 == Constants.OPERATIONAL_STATE)
+        assert(states._2 == 1)
+        assert(states._3 == 1)
+
+        val res = helper.wishboneRead(Constants.DECISION_ADDR)
+        res.expect(2)
+
       }
   }
 }

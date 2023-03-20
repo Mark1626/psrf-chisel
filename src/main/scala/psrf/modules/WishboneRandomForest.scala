@@ -58,10 +58,29 @@ class WishboneRandomForest()(implicit val p: Parameters) extends Module
 
   val candidate = Reg(Vec(maxFeatures, FixedPoint(fixedPointWidth.W, fixedPointBinaryPoint.BP)))
   val decision = Reg(UInt(32.W))
+  val out_valid = RegInit(false.B)
 
   // Connection to tiles
   decisionTreeTile.io.operational := mode === operational
-  decisionTreeTile.io.tree <> DontCare
+
+  decisionTreeTile.io.tree.in.valid := false.B
+  decisionTreeTile.io.tree.in.bits := DontCare
+  when (decisionTreeTile.io.tree.in.ready && state === busy) {
+    decisionTreeTile.io.tree.in.bits.candidates := candidate
+    decisionTreeTile.io.tree.in.bits.offset := 0.U
+    decisionTreeTile.io.tree.in.valid := true.B
+    out_valid := false.B
+  }
+
+  decisionTreeTile.io.tree.out.ready := state === busy
+  when (decisionTreeTile.io.tree.out.fire) {
+    // TODO: This has to go through a majority voter
+    decision := decisionTreeTile.io.tree.out.bits
+    state := idle
+    out_valid := true.B
+  }
+
+  // Connection to internal scratchpad
   decisionTreeTile.io.up <> io
   decisionTreeTile.io.up.bus.addr := io.bus.addr(31, 0)
   decisionTreeTile.io.up.bus.stb := false.B
@@ -83,7 +102,7 @@ class WishboneRandomForest()(implicit val p: Parameters) extends Module
     data_rd := 0.U(busWidth.W)
 
     switch (sel) {
-      is (MMIO_ADDR.CSR.U) { data_rd := Cat(0.U(61.W), mode, state === idle, false.B) }
+      is (MMIO_ADDR.CSR.U) { data_rd := Cat(0.U(61.W), mode, state === idle, out_valid) }
       is (MMIO_ADDR.DECISION.U) { data_rd := Cat(0.U(32.W), decision) }
       is (MMIO_ADDR.WEIGHTS_OUT.U) {
         decisionTreeTile.io.up.bus.stb := true.B
