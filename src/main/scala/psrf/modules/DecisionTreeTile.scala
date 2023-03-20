@@ -25,8 +25,10 @@ class DecisionTreeTile()(implicit val p: Parameters) extends Module
 
     // Wishbone IO to scratchpad is DontCare
     io.up <> DontCare
+    io.up.bus.ack := false.B
   } .otherwise {
     decisionTree.io <> DontCare
+    decisionTree.io.down.bus.ack := false.B
     io.tree <> DontCare
 
     // Connect to scratchpad by
