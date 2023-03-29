@@ -27,7 +27,7 @@ object MMIO_ADDR {
   *
   * CSR
   * 0x00  = R = CSR            = {61'b0, mode, ready, valid}
-  * 0x04  = W = Change Mode    = {mode}
+  * 0x04  = W = Change Mode    = {offset, size, mode}
   *
   * Data
   * 0x10  = W = Candidate In   = {last, idx, candidate}
