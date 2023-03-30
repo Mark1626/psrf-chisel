@@ -1,18 +1,17 @@
 package psrf.modules
 
 import chisel3._
-import chisel3.util._
 import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
 import chipsalliance.rocketchip.config.{Config, Parameters}
-import psrf.params.RAMSize
+import psrf.params.{DataWidth, FixedPointBinaryPoint, FixedPointWidth, RAMSize}
 
 class AXIDecisionTreeTileSpecHelper(val dut: AXIDecisionTreeTile) {
   def createCandidate(value: Double, id: Long, last: Long = 0L): Long = {
     Helper.toFixedPoint(value, Constants.bpWidth) + (id << 32) + (last << 50)
   }
 
-  def write(addr: Long, data: Long): Unit = {
+  def write(addr: Long, data: BigInt): Unit = {
     while (dut.io.up.write.req.ready.peek() == false.B) dut.clock.step()
     dut.io.up.write.en.poke(true)
     dut.io.up.write.req.bits.addr.poke(addr)
@@ -28,6 +27,10 @@ class AXIDecisionTreeTileSpecHelper(val dut: AXIDecisionTreeTile) {
 
     dut.clock.step()
     //dut.io.up.write.resp.valid.expect(false)
+  }
+
+  def write(addr: Long, node: TreeNodeLit): Unit = {
+    write(addr, node.toBinary)
   }
 
   def read(addr: Long): UInt = {
@@ -51,7 +54,16 @@ class AXIDecisionTreeTileSpecHelper(val dut: AXIDecisionTreeTile) {
 
 class AXIDecisionTreeTileSpec extends AnyFlatSpec with ChiselScalatestTester {
   val p: Parameters = new Config((site, here, up) => {
+    case FixedPointWidth => 32
+    case FixedPointBinaryPoint => 16
+    case DecisionTreeConfigKey => DecisionTreeConfig(
+      maxFeatures = 2,
+      maxNodes = 10,
+      maxClasses = 10,
+      maxDepth = 10
+    )
     case RAMSize => 1024
+    case DataWidth => 64
   })
 
   it should "function as a passthrough to storage when tile is not in operational mode" in {
@@ -67,6 +79,42 @@ class AXIDecisionTreeTileSpec extends AnyFlatSpec with ChiselScalatestTester {
 
         helper.read(100).expect(101)
         helper.read(300).expect(301)
+      }
+  }
+
+  it should "behave as a decision tree when in operational mode" in {
+    test(new AXIDecisionTreeTile()(p))
+      .withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+
+        val inCandidates = Seq(0.5, 2)
+        val treeNode0 = TreeNodeLit(0, 0, Helper.toFixedPoint(0.5, Constants.bpWidth), 1, 2)
+        val treeNode1 = TreeNodeLit(1, 2, Helper.toFixedPoint(0, Constants.bpWidth), -1, -1)
+
+        val helper = new AXIDecisionTreeTileSpecHelper(dut)
+
+        dut.io.operational.poke(false.B)
+        helper.write(0, treeNode0)
+        helper.write(1, treeNode1)
+
+        dut.io.operational.poke(true.B)
+        dut.io.tree.out.ready.poke(true.B)
+        val candidate = inCandidates.asFixedPointVecLit(
+          p(FixedPointWidth).W,
+          p(FixedPointBinaryPoint).BP)
+
+        dut.io.tree.in.ready.expect(true.B)
+
+        dut.io.tree.in.bits.offset.poke(0.U)
+        dut.io.tree.in.bits.candidates.poke(candidate)
+        dut.io.tree.in.valid.poke(true.B)
+
+        dut.clock.step()
+        dut.io.tree.in.valid.poke(false.B)
+
+        while (!dut.io.tree.out.valid.peekBoolean()) {
+          dut.clock.step()
+        }
+        dut.io.tree.out.bits.expect(2)
       }
   }
 

@@ -4,7 +4,7 @@ import chisel3._
 import chipsalliance.rocketchip.config.{Config, Parameters}
 import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
-import psrf.params.{BusWidth, RAMSize}
+import psrf.params.{BusWidth, DataWidth, RAMSize}
 
 class WishboneRAMHelper(dut: WishboneScratchpad) {
   def wishboneWrite(addr: Long, data: Long): Unit = {
@@ -49,6 +49,7 @@ class WishboneScratchpadSpec extends AnyFlatSpec with ChiselScalatestTester {
   val p: Parameters = new Config((site, here, up) => {
     case RAMSize => 1024
     case BusWidth => 64
+    case DataWidth => 64
   })
 
   it should "be able to write and read" in {

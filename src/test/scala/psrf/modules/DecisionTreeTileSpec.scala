@@ -5,7 +5,7 @@ import chisel3._
 import chisel3.util._
 import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
-import psrf.params.{BusWidth, FixedPointBinaryPoint, FixedPointWidth, RAMSize}
+import psrf.params.{BusWidth, DataWidth, FixedPointBinaryPoint, FixedPointWidth, RAMSize}
 
 class DecisionTreeTileSpecHelper(val dut: DecisionTreeTile) {
 
@@ -51,6 +51,7 @@ class DecisionTreeTileSpec extends AnyFlatSpec with ChiselScalatestTester {
     case FixedPointWidth => 32
     case FixedPointBinaryPoint => 16
     case BusWidth => 64
+    case DataWidth => 64
     case DecisionTreeConfigKey => DecisionTreeConfig(
       maxFeatures = 2,
       maxNodes = 10,

@@ -4,7 +4,7 @@ import chisel3._
 import chipsalliance.rocketchip.config.{Config, Parameters}
 import chiseltest.{ChiselScalatestTester, _}
 import org.scalatest.flatspec.AnyFlatSpec
-import psrf.params.{BusWidth, FixedPointBinaryPoint, FixedPointWidth, RAMSize}
+import psrf.params.{DataWidth, FixedPointBinaryPoint, FixedPointWidth, RAMSize}
 
 class AXIDecisionTreeHelper(dut: AXIDecisionTree) {
   def handleReq(expectedAddr: Int, node: TreeNodeLit): Unit = {
@@ -23,7 +23,7 @@ class AXIDecisionTreeSpec extends AnyFlatSpec with ChiselScalatestTester  {
   val p: Parameters = new Config((site, here, up) => {
     case FixedPointWidth => 32
     case FixedPointBinaryPoint => 16
-    case BusWidth => 64
+    case DataWidth => 64
     case RAMSize => 1024
     case DecisionTreeConfigKey => DecisionTreeConfig(
       maxFeatures = 2,

@@ -28,4 +28,5 @@ case object RAMSize extends Field[Int]
 trait RAMParams {
   implicit val p: Parameters
   val ramSize = p(RAMSize)
+  val dataWidth = p(DataWidth)
 }

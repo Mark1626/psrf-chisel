@@ -1,17 +1,16 @@
 package psrf.modules
 
-import chipsalliance.rocketchip.config.{Field, Parameters}
+import chipsalliance.rocketchip.config.{Parameters}
 import chisel3._
 import chisel3.experimental.FixedPoint
 import chisel3.util._
-import psrf.params.{BusParams, HasFixedPointParams, RAMParams}
+import psrf.params.{RAMParams}
 
 class AXIDecisionTree()(implicit val p: Parameters) extends Module
   with HasVariableDecisionTreeParams
-  with BusParams
   with RAMParams {
 
-  val dataSize = 64
+  val dataSize = dataWidth
   val addrSize = ramSize
 
   val io = IO(new Bundle {
@@ -26,7 +25,7 @@ class AXIDecisionTree()(implicit val p: Parameters) extends Module
 
   // TODO: Init this to 0
   val node_rd = Reg(new TreeNode()(p))
-  val nodeAddr = RegInit(0.U(busWidth.W))
+  val nodeAddr = RegInit(0.U(dataWidth.W))
   val offset = Reg(UInt(32.W))
   val decision = WireDefault(false.B)
 

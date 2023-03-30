@@ -6,21 +6,28 @@ import psrf.params.RAMParams
 
 class AXIDecisionTreeTile()(implicit val p: Parameters) extends Module
   with RAMParams {
-  val dataSize = 64
+  val dataSize = dataWidth
   val addrSize = ramSize
 
   val io = IO(new Bundle {
     val up = new ReadWriteIO(addrSize, dataSize)
-//    val tree = new TreeIO()(p)
+    val tree = new TreeIO()(p)
     val operational = Input(Bool())
   })
 
   val scratchpad = Module(new Scratchpad(addrSize, dataSize))
+  val decisionTree = Module(new AXIDecisionTree()(p))
 
-    when (!io.operational) {
-      io.up <> scratchpad.io
-    } .otherwise {
+    when (io.operational) {
+      io.tree <> decisionTree.io.up
+      scratchpad.io.read <> decisionTree.io.down
+      scratchpad.io.write <> DontCare
+
       io.up <> DontCare
-      scratchpad.io <> DontCare
+    } .otherwise {
+      io.tree <> DontCare
+      decisionTree.io <> DontCare
+
+      io.up <> scratchpad.io
     }
 }

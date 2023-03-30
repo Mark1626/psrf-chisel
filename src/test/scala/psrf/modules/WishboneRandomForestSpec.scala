@@ -6,7 +6,7 @@ import chipsalliance.rocketchip.config.{Config, Parameters}
 import chiseltest._
 import chiseltest.ChiselScalatestTester
 import org.scalatest.flatspec.AnyFlatSpec
-import psrf.params.{BusWidth, FixedPointBinaryPoint, FixedPointWidth, RAMSize}
+import psrf.params.{BusWidth, DataWidth, FixedPointBinaryPoint, FixedPointWidth, RAMSize}
 
 class WishboneRandomForestSpecHelper(val dut: WishboneRandomForest) {
 
@@ -70,6 +70,7 @@ class WishboneRandomForestSpec extends AnyFlatSpec with ChiselScalatestTester {
     case FixedPointWidth => Constants.fpWidth
     case FixedPointBinaryPoint => Constants.bpWidth
     case BusWidth => 64
+    case DataWidth => 64
     case DecisionTreeConfigKey => DecisionTreeConfig(
       maxFeatures = 2,
       maxNodes = 10,
