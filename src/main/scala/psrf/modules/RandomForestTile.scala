@@ -5,7 +5,7 @@ import chisel3.util._
 import chisel3._
 import psrf.params.RAMParams
 
-class RFTile()(implicit val p: Parameters) extends Module with RAMParams {
+class RandomForestTile()(implicit val p: Parameters) extends Module with RAMParams {
   val dataSize = 64
   val addrSize = ramSize
 
@@ -53,8 +53,8 @@ class RFTile()(implicit val p: Parameters) extends Module with RAMParams {
   val addr_sel = io.read.req.bits.addr
   when (io.read.req.fire) {
     switch (addr_sel) {
-      is (AXI_MMIO_ADDR.CSR.U) { rdata := Cat(0.U(61.W), mode, state === idle, decisionValid) }
-      is (AXI_MMIO_ADDR.DECISION.U) { rdata :=  Cat(0.U(32.W), decision) }
+      is (MMIO_ADDR.CSR.U) { rdata := Cat(0.U(61.W), mode, state === idle, decisionValid) }
+      is (MMIO_ADDR.DECISION.U) { rdata :=  Cat(0.U(32.W), decision) }
     }
   }
 

@@ -1,9 +1,8 @@
 package psrf.params
 
 import chipsalliance.rocketchip.config.{Field, Parameters}
+import chisel3._
 import chisel3.util._
-import psrf.modules
-import psrf.modules.{DecisionTreeNode, TreeLiteral}
 
 case object NumFeatures           extends Field[Int]
 case object NumClasses            extends Field[Int]
@@ -27,16 +26,15 @@ trait HasDecisionTreeParams extends HasFixedPointParams {
   def featureClassIndexWidth = math.max(featureIndexWidth, classIndexWidth)
 }
 
-/**
- * Decision tree with predefined node during hardware resolution
- */
-trait HasDecisionTreeWithNodesParameters extends HasDecisionTreeParams {
-  val decisionTreeNodeLiterals = p(TreeLiteral)
-  val numNodes = decisionTreeNodeLiterals.length
-  val nodeAddrWidth = log2Ceil(numNodes)
-  def decisionTreeNodes      = decisionTreeNodeLiterals.map(modules.DecisionTreeNode(_, p))
-  def nodeWidth = 1 + featureClassIndexWidth + fixedPointWidth + nodeAddrWidth + nodeAddrWidth
-}
+case object TreeLiteral extends Field[List[DecisionTreeNodeLit]](Nil)
+
+/** Represent a literal node in a decision tree with Scala datatypes. */
+case class DecisionTreeNodeLit(
+      isLeafNode:        Boolean,
+      featureClassIndex: Int,
+      threshold:         Double,
+      rightNode:         Int,
+      leftNode:          Int)
 
 trait HasRandomForestParams extends HasDecisionTreeParams {
   implicit val p: Parameters
@@ -45,19 +43,28 @@ trait HasRandomForestParams extends HasDecisionTreeParams {
 
 case class DecisionTreeParams()(implicit val p: Parameters) extends HasDecisionTreeParams
 
-/*
-/** Random forest classifier module that performs classification of input candidates */
-class RandomForestClassifier(implicit val p: Parameters) extends Module with HasRandomForestParameters {
-  val io = IO(new Bundle {
-    val in  = Flipped(Decoupled(Vec(numFeatures, FixedPoint(fixedPointWidth.W, fixedPointBinaryPoint.BP))))
-    val out = Irrevocable(new MajorityVoterOut()(p))
-  })
+case class DecisionTreeConfig(
+                               maxFeatures: Int,
+                               maxNodes: Int,
+                               maxClasses: Int,
+                               maxDepth: Int
+                             )
 
-  val decisionTreeArray = Module(new DecisionTreeArraySimple()(p))
-  val majorityVoter     = Module(new MajorityVoterArea()(p))
+case object DecisionTreeConfigKey extends Field[DecisionTreeConfig]
 
-  decisionTreeArray.io.in <> io.in
-  majorityVoter.io.in <> decisionTreeArray.io.out
-  io.out <> majorityVoter.io.out
+trait HasVariableDecisionTreeParams extends HasFixedPointParams {
+  implicit val p: Parameters
+  val config = p(DecisionTreeConfigKey)
+  val maxFeatures = config.maxFeatures
+  val maxNodes = config.maxNodes
+  val maxClasses = config.maxClasses
+  val maxDepth = config.maxDepth
+
+  val featureIndexWidth = log2Ceil(maxFeatures)
+  val classIndexWidth = log2Ceil(maxClasses)
+
+  def featureClassIndexWidth = math.max(featureIndexWidth, classIndexWidth)
+
+  assert(fixedPointWidth == 32)
+  assert(featureClassIndexWidth <= 11)
 }
-*/

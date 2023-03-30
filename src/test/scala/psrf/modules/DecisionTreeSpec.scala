@@ -1,284 +1,142 @@
 package psrf.modules
 
 import chisel3._
-import chiseltest._
-import chiseltest.simulator.WriteVcdAnnotation
+import chipsalliance.rocketchip.config.{Config, Parameters}
+import chiseltest.{ChiselScalatestTester, _}
 import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
-import psrf.config.{Config, Parameters}
-import psrf.params._
+import psrf.params.{DataWidth, DecisionTreeConfig, DecisionTreeConfigKey, FixedPointBinaryPoint, FixedPointWidth, RAMSize}
 
-class DecisionTreeSpec extends AnyFlatSpec with ChiselScalatestTester with Matchers {
-  def decisionTreeSingleTest(
-    p:                Parameters,
-    inCandidate:      Seq[Double],
-    expectedDecision: Int
-  ): Unit = {
-    val annos = Seq(WriteVcdAnnotation)
-    val candidate = inCandidate.asFixedPointVecLit(
-      p(FixedPointWidth).W,
-      p(FixedPointBinaryPoint).BP
+class AXIDecisionTreeHelper(dut: DecisionTree) {
+  def handleReq(expectedAddr: Int, node: TreeNodeLit): Unit = {
+    dut.io.down.req.valid.expect(true.B)
+    dut.io.down.req.bits.addr.expect(expectedAddr)
+    dut.io.down.resp.ready.expect(true.B)
+
+    dut.clock.step()
+
+    dut.io.down.resp.bits.data.poke(node.toBinary.U(64.W))
+    dut.io.down.resp.valid.poke(true.B)
+  }
+}
+
+class DecisionTreeSpec extends AnyFlatSpec with ChiselScalatestTester  {
+  val p: Parameters = new Config((site, here, up) => {
+    case FixedPointWidth => 32
+    case FixedPointBinaryPoint => 16
+    case DataWidth => 64
+    case RAMSize => 1024
+    case DecisionTreeConfigKey => DecisionTreeConfig(
+      maxFeatures = 2,
+      maxNodes = 10,
+      maxClasses = 10,
+      maxDepth = 10
     )
+  })
 
-    test(new DecisionTreeWithNodesChiselModule()(p)).withAnnotations(annos) { dut =>
-      dut.io.in.valid.poke(false.B)
-      dut.io.in.ready.expect(true.B)
-      dut.clock.step()
-      dut.io.in.bits.poke(candidate)
-      dut.io.in.valid.poke(true.B)
-      dut.io.out.ready.poke(true.B)
-      while (dut.io.out.valid.peek().litValue == 0) dut.clock.step()
-      dut.io.out.bits.expect(expectedDecision.U)
-    }
+  it should "return candidate when at leaf node" in {
+    test(new DecisionTree()(p))
+      .withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+        val helper = new AXIDecisionTreeHelper(dut)
+
+        val inCandidates = Seq(0.5, 2)
+        val treeNode = TreeNodeLit(1, 2, Helper.toFixedPoint(3.75, Constants.bpWidth), 0, 0)
+
+        // TODO: This only works when size of Vec is equal to maxFeatures
+        val candidate = inCandidates.asFixedPointVecLit(
+          p(FixedPointWidth).W,
+          p(FixedPointBinaryPoint).BP)
+
+        dut.io.up.in.ready.expect(true.B)
+
+        dut.io.down.req.ready.poke(true.B)
+
+        dut.io.up.in.bits.offset.poke(0.U)
+        dut.io.up.in.bits.candidates.poke(candidate)
+        dut.io.up.in.valid.poke(true.B)
+        dut.clock.step()
+
+        dut.io.up.in.valid.poke(false.B)
+
+        helper.handleReq(0, treeNode)
+        dut.io.up.out.ready.poke(true.B)
+
+        while (!dut.io.up.out.valid.peekBoolean()) {
+          dut.clock.step()
+        }
+        dut.io.up.out.bits.expect(2)
+      }
   }
 
-  def decisionTreeSeqTest(
-    p:                 Parameters,
-    inCandidates:      Seq[Seq[Double]],
-    expectedDecisions: Seq[Int]
-  ): Unit = {
-    val annos      = Seq(WriteVcdAnnotation)
-    val candidates = inCandidates.map(x => x.asFixedPointVecLit(p(FixedPointWidth).W, p(FixedPointBinaryPoint).BP))
+  it should "go to left node and give correct decision" in {
+    test(new DecisionTree()(p))
+      .withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+        val helper = new AXIDecisionTreeHelper(dut)
 
-    test(new DecisionTreeWithNodesChiselModule()(p)).withAnnotations(annos) { dut =>
-      dut.io.in.initSource()
-      dut.io.in.setSourceClock(dut.clock)
-      dut.io.out.initSink()
-      dut.io.out.setSinkClock(dut.clock)
-      fork {
-        dut.io.in.enqueueSeq(candidates)
-      }.fork {
-        dut.io.out.expectDequeueSeq(expectedDecisions.map(_.U))
-      }.join()
-    }
+        val inCandidates = Seq(0.5, 2)
+        val treeNode0 = TreeNodeLit(0, 0, Helper.toFixedPoint(0.5, Constants.bpWidth), 1, 2)
+        val treeNode1 = TreeNodeLit(1, 2, Helper.toFixedPoint(0, Constants.bpWidth), -1, -1)
+
+        val candidate = inCandidates.asFixedPointVecLit(
+          p(FixedPointWidth).W,
+          p(FixedPointBinaryPoint).BP)
+
+        dut.io.up.in.initSource()
+        dut.io.up.out.ready.poke(true.B)
+        dut.io.down.req.ready.poke(true.B)
+
+        dut.io.up.in.bits.offset.poke(0.U)
+        dut.io.up.in.bits.candidates.poke(candidate)
+        dut.io.up.in.valid.poke(true.B)
+        dut.clock.step()
+
+        dut.io.up.in.valid.poke(false.B)
+
+        helper.handleReq(0, treeNode0)
+        dut.clock.step()
+
+        helper.handleReq(1, treeNode1)
+
+        while (!dut.io.up.out.valid.peekBoolean()) {
+          dut.clock.step()
+        }
+        dut.io.up.out.bits.expect(2)
+      }
   }
 
-  it should "got to left node and give correct decision" in {
-    val p = new Config((site, here, up) => {
-      case NumFeatures           => 2
-      case NumClasses            => 2
-      case NumTrees              => 1
-      case FixedPointWidth       => 5
-      case FixedPointBinaryPoint => 2
-      case TreeLiteral =>
-        List(
-          DecisionTreeNodeLit(
-            isLeafNode = false,
-            featureClassIndex = 0,
-            threshold = 1,
-            rightNode = 2,
-            leftNode = 1
-          ), // Root node
-          DecisionTreeNodeLit(
-            isLeafNode = true,
-            featureClassIndex = 1,
-            threshold = 2,
-            rightNode = 0,
-            leftNode = 0
-          ), // Left node
-          DecisionTreeNodeLit(
-            isLeafNode = true,
-            featureClassIndex = 0,
-            threshold = 2,
-            rightNode = 0,
-            leftNode = 0
-          ) // Right node
-        )
-    })
-    val inCandidate      = Seq(0.5, 2)
-    val expectedDecision = 1
-    decisionTreeSingleTest(p, inCandidate, expectedDecision)
-  }
+  it should "go to right node and give correct decision" in {
+    test(new DecisionTree()(p))
+      .withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+        val helper = new AXIDecisionTreeHelper(dut)
 
-  it should "got to right node and give correct decision" in {
-    val p = new Config((site, here, up) => {
-      case NumFeatures           => 2
-      case NumClasses            => 2
-      case NumTrees              => 1
-      case FixedPointWidth       => 5
-      case FixedPointBinaryPoint => 2
-      case TreeLiteral =>
-        List(
-          DecisionTreeNodeLit(
-            isLeafNode = false,
-            featureClassIndex = 1,
-            threshold = 1,
-            rightNode = 2,
-            leftNode = 1
-          ), // Root node
-          DecisionTreeNodeLit(
-            isLeafNode = true,
-            featureClassIndex = 1,
-            threshold = 2,
-            rightNode = 0,
-            leftNode = 0
-          ), // Left node
-          DecisionTreeNodeLit(
-            isLeafNode = true,
-            featureClassIndex = 0,
-            threshold = 2,
-            rightNode = 0,
-            leftNode = 0
-          ) // Right node
-        )
-    })
-    val inCandidate      = Seq(0.5, 2)
-    val expectedDecision = 0
-    decisionTreeSingleTest(p, inCandidate, expectedDecision)
-  }
+        val inCandidates = Seq(1.5, 2)
+        val treeNode0 = TreeNodeLit(0, 0, Helper.toFixedPoint(0.5, Constants.bpWidth), 1, 2)
+        val treeNode2 = TreeNodeLit(1, 3, Helper.toFixedPoint(0, Constants.bpWidth), -1, -1)
 
-  it should "be able to traverse a tree with five nodes and give correct decision" in {
-    val p = new Config((site, here, up) => {
-      case NumFeatures           => 2
-      case NumClasses            => 2
-      case NumTrees              => 1
-      case FixedPointWidth       => 5
-      case FixedPointBinaryPoint => 2
-      case TreeLiteral =>
-        List(
-          DecisionTreeNodeLit(
-            isLeafNode = false,
-            featureClassIndex = 0,
-            threshold = 1,
-            rightNode = 2,
-            leftNode = 1
-          ), // Root node
-          DecisionTreeNodeLit(
-            isLeafNode = false,
-            featureClassIndex = 1,
-            threshold = 2,
-            rightNode = 4,
-            leftNode = 3
-          ), // Left node
-          DecisionTreeNodeLit(
-            isLeafNode = true,
-            featureClassIndex = 0,
-            threshold = 2,
-            rightNode = 0,
-            leftNode = 0
-          ), // Right node
-          DecisionTreeNodeLit(
-            isLeafNode = true,
-            featureClassIndex = 1,
-            threshold = 2,
-            rightNode = 0,
-            leftNode = 0
-          ), // Left Left node
-          DecisionTreeNodeLit(
-            isLeafNode = true,
-            featureClassIndex = 0,
-            threshold = 2,
-            rightNode = 0,
-            leftNode = 0
-          ) // Left Right node
-        )
-    })
-    val inCandidate      = Seq(0.5, 2.5)
-    val expectedDecision = 0
-    decisionTreeSingleTest(p, inCandidate, expectedDecision)
-  }
+        val candidate = inCandidates.asFixedPointVecLit(
+          p(FixedPointWidth).W,
+          p(FixedPointBinaryPoint).BP)
 
-  it should "give correct decision for multiple candidates" in {
-    val p = new Config((site, here, up) => {
-      case NumFeatures           => 2
-      case NumClasses            => 2
-      case NumTrees              => 1
-      case FixedPointWidth       => 5
-      case FixedPointBinaryPoint => 2
-      case TreeLiteral =>
-        List(
-          DecisionTreeNodeLit(
-            isLeafNode = false,
-            featureClassIndex = 0,
-            threshold = 1,
-            rightNode = 2,
-            leftNode = 1
-          ), // Root node
-          DecisionTreeNodeLit(
-            isLeafNode = true,
-            featureClassIndex = 1,
-            threshold = 2,
-            rightNode = 0,
-            leftNode = 0
-          ), // Left node
-          DecisionTreeNodeLit(
-            isLeafNode = true,
-            featureClassIndex = 0,
-            threshold = 2,
-            rightNode = 0,
-            leftNode = 0
-          ) // Right node
-        )
-    })
-    val inCandidates      = Seq(Seq(0.5, 2), Seq(2, 0.5), Seq(1, 0.5), Seq(1.5, 1))
-    val expectedDecisions = Seq(1, 0, 1, 0)
-    decisionTreeSeqTest(p, inCandidates, expectedDecisions)
-  }
+        dut.io.up.in.initSource()
+        dut.io.up.out.ready.poke(true.B)
 
-  // Note: This is no longer valid in the current design
-//  it should "keep output decision valid until it is consumed" in {
-//    val p = new Config((site, here, up) => {
-//      case NumFeatures           => 2
-//      case NumClasses            => 2
-//      case NumTrees              => 1
-//      case FixedPointWidth       => 5
-//      case FixedPointBinaryPoint => 2
-//      case TreeLiteral =>
-//        List(
-//          DecisionTreeNodeLit(
-//            isLeafNode = false,
-//            featureClassIndex = 0,
-//            threshold = 1,
-//            rightNode = 2,
-//            leftNode = 1
-//          ), // Root node
-//          DecisionTreeNodeLit(
-//            isLeafNode = true,
-//            featureClassIndex = 1,
-//            threshold = 2,
-//            rightNode = 0,
-//            leftNode = 0
-//          ), // Left node
-//          DecisionTreeNodeLit(
-//            isLeafNode = true,
-//            featureClassIndex = 0,
-//            threshold = 2,
-//            rightNode = 0,
-//            leftNode = 0
-//          ) // Right node
-//        )
-//    })
-//    val inCandidate      = Seq(2d, 3d)
-//    val expectedDecision = 0
-//    val annos            = Seq(WriteVcdAnnotation)
-//    val candidate        = inCandidate.asFixedPointVecLit(p(FixedPointWidth).W, p(FixedPointBinaryPoint).BP)
-//
-//    test(new DecisionTreeChiselModule()(p)).withAnnotations(annos) { dut =>
-//      dut.io.in.valid.poke(false.B)
-//      dut.io.in.ready.expect(true.B)
-//      dut.clock.step()
-//      dut.io.in.bits.poke(candidate)
-//      dut.io.in.valid.poke(true.B)
-//      dut.io.out.ready.poke(false.B)
-//      // Wait until output becomes valid
-//      while (dut.io.out.valid.peek().litValue == 0) {
-//        dut.clock.step()
-//        dut.io.in.ready.expect(false.B)
-//      }
-//      dut.io.out.bits.expect(expectedDecision.B)
-//      dut.io.in.valid.poke(false.B)
-//      // Check if output stays latched for 10 cycles
-//      for (i <- 0 until 10) {
-//        dut.clock.step()
-//        dut.io.in.ready.expect(false.B)
-//        dut.io.out.valid.expect(true.B)
-//        dut.io.out.bits.expect(expectedDecision.B)
-//      }
-//      // Check if module goes back to initial idle state when output is consumed
-//      dut.io.out.ready.poke(true.B)
-//      dut.clock.step()
-//      dut.io.in.ready.expect(true.B)
-//      dut.io.out.valid.expect(false.B)
-//    }
-//  }
+        dut.io.down.req.ready.poke(true.B)
+
+        dut.io.up.in.bits.offset.poke(0.U)
+        dut.io.up.in.bits.candidates.poke(candidate)
+        dut.io.up.in.valid.poke(true.B)
+        dut.clock.step()
+
+        dut.io.up.in.valid.poke(false.B)
+
+        helper.handleReq(0, treeNode0)
+        dut.clock.step()
+
+        helper.handleReq(2, treeNode2)
+
+        while (!dut.io.up.out.valid.peekBoolean()) {
+          dut.clock.step()
+        }
+        dut.io.up.out.bits.expect(3)
+      }
+  }
 }

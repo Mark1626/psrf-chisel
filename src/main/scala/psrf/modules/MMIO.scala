@@ -1,6 +1,6 @@
 package psrf.modules
 
-object AXI_MMIO_ADDR {
+object MMIO_ADDR {
   val CSR = 0x00
   val CHANGE_MODE = 0x08
   val CANDIDATE_IN = 0x10

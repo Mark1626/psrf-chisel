@@ -1,7 +1,9 @@
 package psrf.modules
 
+import chipsalliance.rocketchip.config.Parameters
 import chisel3._
 import chisel3.util.{Decoupled, log2Ceil}
+import psrf.params.HasVariableDecisionTreeParams
 
 class ReadReq(val n: Int) extends Bundle {
   val addr = UInt(log2Ceil(n).W)
@@ -35,3 +37,13 @@ class ReadWriteIO(val n: Int, val w: Int) extends Bundle {
   val read = new ReadIO(n, w)
   val write = new WriteIO(n, w)
 }
+
+// TODO: The width of in interface should be reduced, we are assuming that
+//  our features are going to be less. This potentially can be a Wishbone Slave
+//
+class TreeIO()(implicit val p: Parameters) extends Bundle with HasVariableDecisionTreeParams {
+  val in = Flipped(Decoupled(new TreeInputBundle()))
+  val out = Decoupled(UInt(9.W))
+  val busy = Output(Bool())
+}
+

@@ -1,109 +1,83 @@
 package psrf.modules
 
 import chipsalliance.rocketchip.config.{Field, Parameters}
-import chisel3.experimental.BundleLiterals._
-import chisel3.experimental.{BaseModule, FixedPoint}
+import chisel3._
+import chisel3.experimental.FixedPoint
 import chisel3.util._
-import chisel3.{when, _}
-import psrf.params.{HasDecisionTreeWithNodesParameters}
+import psrf.params.{HasFixedPointParams, HasVariableDecisionTreeParams, RAMParams}
 
-case object TreeLiteral extends Field[List[DecisionTreeNodeLit]](Nil)
-
-/** Represent a literal node in a decision tree with Scala datatypes. */
-case class DecisionTreeNodeLit(
-  isLeafNode:        Boolean,
-  featureClassIndex: Int,
-  threshold:         Double,
-  rightNode:         Int,
-  leftNode:          Int)
-
-/** Represent a node in a decision tree as Chisel data. */
-class DecisionTreeNode(implicit val p: Parameters) extends Bundle with HasDecisionTreeWithNodesParameters {
-  val isLeafNode        = Bool()
-  val featureClassIndex = UInt(featureClassIndexWidth.W)
-  val threshold         = FixedPoint(fixedPointWidth.W, fixedPointBinaryPoint.BP)
-  val rightNode         = UInt(nodeAddrWidth.W)
-  val leftNode          = UInt(nodeAddrWidth.W)
+class TreeInputBundle()(implicit val p: Parameters) extends Bundle with HasVariableDecisionTreeParams {
+  val candidates = Vec(maxFeatures, FixedPoint(fixedPointWidth.W, fixedPointBinaryPoint.BP))
+  val offset = UInt(32.W)
 }
 
-object DecisionTreeNode {
-
-  /** Converts a literal decision tree node [[DecisionTreeNodeLit]] to chisel bundle [[DecisionTreeNode]].
-    */
-  def apply(n: DecisionTreeNodeLit, p: Parameters): DecisionTreeNode = {
-    // TODO Fix this hack
-    val dtb = new DecisionTreeNode()(p)
-    (new DecisionTreeNode()(p)).Lit(
-      _.isLeafNode        -> n.isLeafNode.B,
-      _.featureClassIndex -> n.featureClassIndex.U(dtb.featureClassIndexWidth.W),
-      _.threshold         -> FixedPoint.fromDouble(n.threshold, dtb.fixedPointWidth.W, dtb.fixedPointBinaryPoint.BP),
-      _.rightNode         -> (if (n.rightNode < 0) 0 else n.rightNode).U(dtb.nodeAddrWidth.W),
-      _.leftNode          -> (if (n.leftNode < 0) 0 else n.leftNode).U(dtb.nodeAddrWidth.W)
-    )
-  }
+class TreeNode()(implicit val p: Parameters) extends Bundle with HasVariableDecisionTreeParams {
+  val isLeafNode = Bool()
+  val featureClassIndex = UInt(9.W)
+  val threshold = FixedPoint(fixedPointWidth.W, fixedPointBinaryPoint.BP)
+  val leftNode = UInt(11.W)
+  val rightNode = UInt(11.W)
 }
 
-class DecisionTreeIO()(implicit val p: Parameters) extends Bundle with HasDecisionTreeWithNodesParameters {
-  val in = Flipped(Decoupled(Vec(numFeatures, FixedPoint(fixedPointWidth.W, fixedPointBinaryPoint.BP))))
-  val out = Decoupled(UInt(classIndexWidth.W))
-  val busy = Output(Bool())
-}
+class DecisionTree()(implicit val p: Parameters) extends Module
+  with HasVariableDecisionTreeParams
+  with RAMParams {
 
-trait HasDecisionTreeIO extends BaseModule {
-  implicit val p: Parameters
-  val io = IO(new DecisionTreeIO()(p))
-}
+  val dataSize = dataWidth
+  val addrSize = ramSize
 
-/** Decision tree module which performs classification of an input candidate by traversing an internal ROM of
-  * [[DecisionTreeNode]].
-  */
-class DecisionTreeWithNodesChiselModule(implicit val p: Parameters) extends Module
-  with HasDecisionTreeWithNodesParameters
-  with HasDecisionTreeIO {
+  val io = IO(new Bundle {
+    val up = new TreeIO()(p)
+    val down = Flipped(new ReadIO(addrSize, dataSize))
+  })
 
-  // ROM of decision tree nodes
-  val decisionTreeRom = VecInit(decisionTreeNodes)
-
-  val idle :: busy :: done :: Nil = Enum(3)
+  val idle :: bus_req :: bus_wait :: busy :: done :: Nil = Enum(5)
 
   val state = RegInit(idle)
-  val start = io.in.valid & io.in.ready
-  val rest  = io.out.valid & io.out.ready
+  val candidate = Reg(Vec(maxFeatures, FixedPoint(fixedPointWidth.W, fixedPointBinaryPoint.BP)))
 
-  val candidate = Reg(Vec(numFeatures, FixedPoint(fixedPointWidth.W, fixedPointBinaryPoint.BP)))
-  val node      = Reg(new DecisionTreeNode()(p))
-  val nodeAddr  = WireDefault(0.U(nodeAddrWidth.W))
-  val decision  = WireDefault(false.B)
+  // TODO: Init this to 0
+  val node_rd = Reg(new TreeNode()(p))
+  val nodeAddr = RegInit(0.U(dataWidth.W))
+  val offset = Reg(UInt(32.W))
+  val decision = WireDefault(false.B)
 
-  io.in.ready  := state === idle
-  io.out.valid := state === done
+  io.up.in.ready := state === idle
+  io.up.out.valid := state === done
+  io.up.out.bits := node_rd.featureClassIndex
 
-  io.out.bits  := node.featureClassIndex(classIndexWidth - 1, 0)
+  val activeTrn = state === bus_req
+
+  io.down.req.valid := state === bus_req
+  io.down.req.bits.addr := nodeAddr
+  io.down.resp.ready := state === bus_req || state === bus_wait
 
   // FSM
-  when(state === idle) {
-    //io.in.ready := true.B
-    when(start) {
-      state     := busy
-      candidate := io.in.bits
-      node      := decisionTreeRom(0)
-    }
-  }.elsewhen(state === busy) {
-    val featureIndex   = node.featureClassIndex
-    val featureValue   = candidate(featureIndex)
-    val thresholdValue = node.threshold
+  when(state === idle && io.up.in.fire) {
+    // Decision Tree init
+    candidate := io.up.in.bits.candidates
+    offset := io.up.in.bits.offset
+    nodeAddr := io.up.in.bits.offset
+
+    state := bus_req
+  }.elsewhen(state === bus_req && io.down.req.ready) {
+    state := bus_wait
+  } .elsewhen (state === bus_wait && io.down.resp.valid) {
+    val node = io.down.resp.bits.data.asTypeOf(node_rd)
+    node_rd := node
+
+    val featureIndex = node.featureClassIndex
+    val featureValue = candidate(featureIndex) // TODO: Can this result in an exception
 
     when(node.isLeafNode) {
       state := done
     }.otherwise {
-      decision := featureValue <= thresholdValue
-      // TODO Check if extra delay needs to be added for ROM access
-      node := Mux(decision, decisionTreeRom(node.leftNode), decisionTreeRom(node.rightNode))
+      val jumpOffset: UInt = Mux(featureValue <= node.threshold, node.leftNode, node.rightNode)
+      nodeAddr := offset + jumpOffset.asUInt // TODO: This could be replaced as nodeAddr := nodeAddr + jumpOffset
+      state := bus_req
     }
-  }.elsewhen(state === done) {
-    //io.out.valid := true.B
+  } .elsewhen(state === done && io.up.out.ready) {
     state := idle
   }
-
-  io.busy := state =/= idle
+  io.up.busy := state =/= idle
 }
