@@ -34,13 +34,11 @@ class AXIDecisionTree()(implicit val p: Parameters) extends Module
   io.up.out.valid := state === done
   io.up.out.bits := node_rd.featureClassIndex
 
-  val activeTrn = RegInit(false.B)
+  val activeTrn = state === bus_req
 
   io.down.req.valid := activeTrn
   io.down.req.bits.addr := nodeAddr
   io.down.resp.ready := activeTrn
-
-  activeTrn := false.B
 
   // FSM
   when(state === idle && io.up.in.fire) {
@@ -51,7 +49,6 @@ class AXIDecisionTree()(implicit val p: Parameters) extends Module
 
     state := bus_req
   }.elsewhen(state === bus_req && io.down.req.ready) {
-    activeTrn := true.B
     state := bus_wait
   } .elsewhen (state === bus_wait && io.down.resp.valid) {
     val node = io.down.resp.bits.data.asTypeOf(node_rd)
