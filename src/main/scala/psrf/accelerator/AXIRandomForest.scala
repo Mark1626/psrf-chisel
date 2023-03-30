@@ -11,12 +11,12 @@ import freechips.rocketchip.diplomacy.{AddressSet, LazyModule, LazyModuleImp, Re
 import freechips.rocketchip.subsystem.BaseSubsystem
 import freechips.rocketchip.tilelink.{TLFragmenter, TLToAXI4}
 import freechips.rocketchip.util.BundleMap
-import psrf.modules.{HasVariableDecisionTreeParams, RFTile}
-import psrf.params.RAMSize
+import psrf.modules.RandomForestTile
+import psrf.params.{DataWidth, DecisionTreeConfig, DecisionTreeConfigKey, FixedPointBinaryPoint, FixedPointWidth, NumClasses, NumFeatures, RAMSize}
 
 case class AXIRandomForestParams(
-                             addressSet: AddressSet
-                           )
+  addressSet: AddressSet
+)
 
 case object AXIRandomForestKey extends Field[Option[AXIRandomForestParams]](None)
 
@@ -44,6 +44,15 @@ trait CanHavePeripheryAXIRandomForest { this: BaseSubsystem =>
 class WithAXIRandomForest(addressSet: AddressSet) extends Config((site, here, up) => {
   case AXIRandomForestKey => Some(AXIRandomForestParams(addressSet))
   case RAMSize => 1024
+  case DataWidth => 64
+  case FixedPointWidth => 32
+  case FixedPointBinaryPoint => 16
+  case DecisionTreeConfigKey => DecisionTreeConfig(
+    maxFeatures = 2,
+    maxNodes = 10,
+    maxClasses = 10,
+    maxDepth = 10
+  )
 })
 
 class AXI4RandomForest(
@@ -90,7 +99,7 @@ class AXI4RandomForestImp(outer: AXI4RandomForest) extends LazyModuleImp(outer) 
 
   def mask: List[Boolean] = bigBits(address.mask >> log2Ceil(beatBytes))
 
-  val tile = Module(new RFTile()(p))
+  val tile = Module(new RandomForestTile()(p))
 
   val r_addr = Cat((mask zip (in.ar.bits.addr >> log2Ceil(beatBytes)).asBools).filter(_._1).map(_._2).reverse)
   val w_addr = Cat((mask zip (in.aw.bits.addr >> log2Ceil(beatBytes)).asBools).filter(_._1).map(_._2).reverse)

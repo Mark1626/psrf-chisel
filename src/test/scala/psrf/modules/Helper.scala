@@ -43,11 +43,11 @@ object Constants {
   val fpWidth = 32
   val bpWidth = 16
   val CSR_ADDR: Long = 0x00L
-  val MODE_CHANGE: Long = 0x04L << 32
-  val CANDIDATE_IN: Long = 0x10L << 32
-  val DECISION_ADDR: Long = 0x14L << 32
-  val WEIGHTS_IN: Long = 0x1CL << 32
-  val WEIGHTS_OUT: Long = 0x20L << 32
+  val MODE_CHANGE: Long = 0x08L
+  val CANDIDATE_IN: Long = 0x10L
+  val DECISION_ADDR: Long = 0x19L
+  val WEIGHTS_IN: Long = 0x20L
+  val WEIGHTS_OUT: Long = 0x28L
   val OPERATIONAL_STATE = 1;
   val WE_WEIGHTS_STATE = 0;
 }
