@@ -54,7 +54,7 @@ class RandomForestTileSpecHelper(val dut: RandomForestTile) {
     write(addr, node.toBinary)
   }
 
-  def read(addr: Long): UInt = {
+  def read(addr: Long): BigInt = {
     // TODO: Fix this
     while (dut.io.read.req.ready.peek() == false.B) dut.clock.step()
     dut.io.read.req.bits.addr.poke(addr)
@@ -65,7 +65,7 @@ class RandomForestTileSpecHelper(val dut: RandomForestTile) {
     dut.io.read.resp.valid.expect(true)
     dut.io.read.req.valid.poke(false)
     //dut.io.read.resp.ready.poke(false)
-    val data = dut.io.read.resp.bits.data
+    val data = dut.io.read.resp.bits.data.peekInt()
 
     dut.clock.step()
     //dut.io.read.resp.valid.expect (false)
@@ -92,7 +92,7 @@ class RandomForestTileSpec extends AnyFlatSpec with ChiselScalatestTester {
       .withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
         val helper = new RandomForestTileSpecHelper(dut)
 
-        val resp = helper.read(Constants.CSR_ADDR).peekInt()
+        val resp = helper.read(Constants.CSR_ADDR)
         assert(helper.parseCSR(resp)._1 == Constants.WE_WEIGHTS_STATE)
       }
   }
@@ -103,12 +103,12 @@ class RandomForestTileSpec extends AnyFlatSpec with ChiselScalatestTester {
         val helper = new RandomForestTileSpecHelper(dut)
 
         helper.write(Constants.MODE_CHANGE, Constants.OPERATIONAL_STATE)
-        var resp = helper.read(Constants.CSR_ADDR).peekInt()
+        var resp = helper.read(Constants.CSR_ADDR)
 
         assert(helper.parseCSR(resp)._1 == Constants.OPERATIONAL_STATE)
 
 //        helper.write(Constants.MODE_CHANGE, Constants.OPERATIONAL_STATE)
-        resp = helper.read(Constants.CSR_ADDR).peekInt()
+        resp = helper.read(Constants.CSR_ADDR)
 
         assert(helper.parseCSR(resp)._1 == Constants.OPERATIONAL_STATE)
       }
@@ -122,7 +122,7 @@ class RandomForestTileSpec extends AnyFlatSpec with ChiselScalatestTester {
         helper.write(Constants.MODE_CHANGE, Constants.OPERATIONAL_STATE)
 
         // Check if it's operational
-        var resp = helper.read(Constants.CSR_ADDR).peekInt()
+        var resp = helper.read(Constants.CSR_ADDR)
         var states = helper.parseCSR(resp)
         assert(states._1 == Constants.OPERATIONAL_STATE)
         assert(states._2 == 1)
@@ -135,11 +135,35 @@ class RandomForestTileSpec extends AnyFlatSpec with ChiselScalatestTester {
         helper.write(Constants.CANDIDATE_IN, helper.createCandidate(candidate2, 1L, last = 1L))
 
         // After candidate CSR should be busy
-        resp = helper.read(Constants.CSR_ADDR).peekInt()
+        resp = helper.read(Constants.CSR_ADDR)
         states = helper.parseCSR(resp)
         assert(states._1 == Constants.OPERATIONAL_STATE)
         assert(states._2 == 0)
 
       }
   }
+
+  it should "be able to store weights" in {
+    test(new RandomForestTile()(params))
+      .withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+        val helper = new RandomForestTileSpecHelper(dut)
+        val mode: BigInt = (0L << 11L) | (4L << 1L) | Constants.WE_WEIGHTS_STATE
+        helper.write(Constants.MODE_CHANGE, mode)
+
+        helper.write(Constants.WEIGHTS_IN, 1)
+        helper.write(Constants.WEIGHTS_IN, 2)
+        helper.write(Constants.WEIGHTS_IN, 3)
+
+        helper.write(Constants.MODE_CHANGE, mode)
+
+        var resp = helper.read(Constants.WEIGHTS_OUT)
+        assert(resp == 1)
+        // TODO: Uncomment this
+//        resp = helper.read(Constants.WEIGHTS_OUT)
+//        assert(resp == 2)
+//        resp = helper.read(Constants.WEIGHTS_OUT)
+//        assert(resp == 3)
+      }
+  }
+
 }
