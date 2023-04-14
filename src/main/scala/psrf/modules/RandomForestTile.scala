@@ -15,6 +15,17 @@ class Candidate()(implicit val p: Parameters) extends Bundle with HasVariableDec
  * MMIO Layout
  *
  * CSR
+ * 0x00  = R = CSR            = {61'b0, ready, valid}
+ * 0x10  = W = Candidate In   = {last, idx, candidate}
+ * 0x18  = R = Decision       = Final Decision
+ *
+ * **/
+
+/**
+ *
+ * MMIO Layout
+ *
+ * CSR
  * 0x00  = R = CSR            = {61'b0, mode, ready, valid}
  * 0x08  = W = Change Mode    = {offset, 10'b size, 1'b mode}
  *
