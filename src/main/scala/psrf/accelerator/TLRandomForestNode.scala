@@ -29,7 +29,7 @@ class TLRandomForestNode(val address: AddressSet,
     val candidate = Reg(Vec(maxFeatures, FixedPoint(fixedPointWidth.W, fixedPointBinaryPoint.BP)))
 
     val node_rd = Reg(new TreeNode()(p))
-    val nodeAddr = RegInit(0.U(32.W))
+    val nodeAddr = RegInit(address.base.U(32.W))
     val offset = Reg(UInt(32.W))
     val decision = WireDefault(false.B)
 
@@ -49,8 +49,8 @@ class TLRandomForestNode(val address: AddressSet,
 
     when (state === idle && io.in.fire) {
       candidate := io.in.bits.candidates
-      offset := io.in.bits.offset
-      nodeAddr := io.in.bits.offset
+      offset := address.base.U(32.W) + (io.in.bits.offset << beatBytesShift)
+      nodeAddr := address.base.U(32.W) + (io.in.bits.offset << beatBytesShift)
       state := bus_req_wait
     }
 

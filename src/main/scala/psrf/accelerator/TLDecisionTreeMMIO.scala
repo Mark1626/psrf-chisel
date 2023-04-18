@@ -25,7 +25,7 @@ abstract class DecisionTreeMMIO(
 {
   // TODO: Should I just mark this as 64bits
   val dataWidth = beatBytes * 8
-  val tlMaster = LazyModule(new TLRandomForestNode(csrAddress, beatBytes = beatBytes)(p))
+  val tlMaster = LazyModule(new TLRandomForestNode(scratchpadAddress, beatBytes = beatBytes)(p))
 
   lazy val module = new LazyModuleImp(this) { outer =>
     val config = p(DecisionTreeConfigKey)
@@ -63,10 +63,14 @@ abstract class DecisionTreeMMIO(
       (ready && decisionValid, decision)
     }
 
+    when (candidateLast) {
+      decisionValid := false.B
+    }
+
     impl.io.in.valid := false.B
     when (impl.io.in.ready && !impl.io.busy) {
       impl.io.in.bits.candidates := candidates
-      impl.io.in.bits.offset := scratchpadAddress.base.U
+      impl.io.in.bits.offset := 0.U
       impl.io.in.valid := candidateLast
       candidateLast := false.B
     }
