@@ -37,6 +37,7 @@ abstract class DecisionTreeMMIO(
     val candidates = Reg(Vec(config.maxFeatures, FixedPoint(fixedPointWidth.W, fixedPointBinaryPoint.BP)))
     val decision = RegInit(0.U(32.W))
     val decisionValid = RegInit(false.B)
+    val error = RegInit(0.U(2.W))
 
     //val candidateLast = Wire(Bool())
     val candidateLast = RegInit(false.B)
@@ -60,7 +61,7 @@ abstract class DecisionTreeMMIO(
 //
 //      }
 
-      (ready && decisionValid, decision)
+      (ready && decisionValid, Cat(error, decision))
     }
 
     when (candidateLast) {
@@ -77,7 +78,8 @@ abstract class DecisionTreeMMIO(
 
     impl.io.out.ready := true.B
     when (impl.io.out.fire) {
-      decision := impl.io.out.bits
+      decision := impl.io.out.bits.classes
+      error := impl.io.out.bits.error
       decisionValid := true.B
     }
 

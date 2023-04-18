@@ -38,12 +38,17 @@ class ReadWriteIO(val n: Int, val w: Int) extends Bundle {
   val write = new WriteIO(n, w)
 }
 
+class TreeOutputBundle() extends Bundle {
+  val classes = UInt(9.W)
+  val error = UInt(2.W)
+}
+
 // TODO: The width of in interface should be reduced, we are assuming that
 //  our features are going to be less. This potentially can be a Wishbone Slave
 //
 class TreeIO()(implicit val p: Parameters) extends Bundle with HasVariableDecisionTreeParams {
   val in = Flipped(Decoupled(new TreeInputBundle()))
-  val out = Decoupled(UInt(9.W))
+  val out = Decoupled(new TreeOutputBundle())
   val busy = Output(Bool())
 }
 

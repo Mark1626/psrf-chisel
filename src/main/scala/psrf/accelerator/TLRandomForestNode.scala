@@ -30,17 +30,24 @@ class TLRandomForestNode(val address: AddressSet,
     val node_rd = Reg(new TreeNode()(p))
     val nodeAddr = RegInit(address.base.U(32.W))
 
+    val error = RegInit(0.U(2.W))
+
     //val offset = Reg(UInt(32.W))
 
     val readRootNode = RegInit(false.B)
 
     io.in.ready := state === idle
     io.out.valid := state === done
-    io.out.bits := node_rd.featureClassIndex
+    io.out.bits.classes := node_rd.featureClassIndex
+
+    io.out.bits.error := error
 
     // TODO: Add a condition to make sure nodeAddress does not exceed scratchpad size
-    //val scratchpadLimit = address.base + address.mask
-    // when (nodeAddr >= scratchpadLimit) { state := done; error := 1 }
+    val scratchpadLimit = address.base + address.mask
+     when (nodeAddr >= scratchpadLimit.U) {
+       state := done
+       error := 1.U
+     }
 
     //mem.a.ready
     mem.a.valid := state === bus_req
@@ -58,6 +65,7 @@ class TLRandomForestNode(val address: AddressSet,
       nodeAddr := address.base.U(32.W) + (io.in.bits.offset << beatBytesShift)
       state := bus_req_wait
       readRootNode := true.B
+      error := 0.U
     }
 
     when (state === bus_req_wait && mem.a.ready) {
