@@ -18,8 +18,7 @@ class TLRandomForestNode(val address: AddressSet,
 
   lazy val module = new LazyModuleImp(this) {
     val (mem, edge) = psrfMaster.out.head
-    val addr = address
-    val reading = RegInit(false.B)
+
     val beatBytesShift = log2Ceil(beatBytes)
 
     val io = IO(new TreeIO()(p))
@@ -30,12 +29,18 @@ class TLRandomForestNode(val address: AddressSet,
 
     val node_rd = Reg(new TreeNode()(p))
     val nodeAddr = RegInit(address.base.U(32.W))
-    val offset = Reg(UInt(32.W))
-    val decision = WireDefault(false.B)
+
+    //val offset = Reg(UInt(32.W))
+
+    val readRootNode = RegInit(false.B)
 
     io.in.ready := state === idle
     io.out.valid := state === done
     io.out.bits := node_rd.featureClassIndex
+
+    // TODO: Add a condition to make sure nodeAddress does not exceed scratchpad size
+    //val scratchpadLimit = address.base + address.mask
+    // when (nodeAddr >= scratchpadLimit) { state := done; error := 1 }
 
     //mem.a.ready
     mem.a.valid := state === bus_req
@@ -49,9 +54,10 @@ class TLRandomForestNode(val address: AddressSet,
 
     when (state === idle && io.in.fire) {
       candidate := io.in.bits.candidates
-      offset := address.base.U(32.W) + (io.in.bits.offset << beatBytesShift)
+      //offset := address.base.U(32.W) + (io.in.bits.offset << beatBytesShift)
       nodeAddr := address.base.U(32.W) + (io.in.bits.offset << beatBytesShift)
       state := bus_req_wait
+      readRootNode := true.B
     }
 
     when (state === bus_req_wait && mem.a.ready) {
@@ -63,18 +69,26 @@ class TLRandomForestNode(val address: AddressSet,
     }
 
     when(state === bus_resp_wait && mem.d.fire) {
-      val node = mem.d.bits.data.asTypeOf(node_rd)
-      node_rd := node
-
-      val featureIndex = node.featureClassIndex
-      val featureValue = candidate(featureIndex) // TODO: Can this result in an exception
-
-      when(node.isLeafNode) {
-        state := done
-      }.otherwise {
-        val jumpOffset: UInt = Mux(featureValue <= node.threshold, node.leftNode, node.rightNode)
-        nodeAddr := offset + (jumpOffset.asUInt << beatBytesShift) // TODO: This could be replaced as nodeAddr := nodeAddr + jumpOffset
+      // First time we get tree's root node address
+      when (readRootNode) {
+        nodeAddr := mem.d.bits.data
+        readRootNode := false.B
         state := bus_req_wait
+      } .otherwise {
+        // Rest of the time it's nodes for the tree
+        val node = mem.d.bits.data.asTypeOf(node_rd)
+        node_rd := node
+
+        val featureIndex = node.featureClassIndex
+        val featureValue = candidate(featureIndex) // TODO: Can this result in an exception
+
+        when(node.isLeafNode) {
+          state := done
+        }.otherwise {
+          val jumpOffset: UInt = Mux(featureValue <= node.threshold, node.leftNode, node.rightNode)
+          nodeAddr := nodeAddr + (jumpOffset.asUInt << beatBytesShift) // TODO: This could be replaced as nodeAddr := nodeAddr + jumpOffset
+          state := bus_req_wait
+        }
       }
     }
 

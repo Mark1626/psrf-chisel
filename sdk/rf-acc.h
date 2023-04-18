@@ -46,7 +46,7 @@ rf_acc_t* rf_init(rf_error_codes *res,
     int depth);
 
 int rf_delete(rf_acc_t *self);
-int rf_store_weights(rf_acc_t *self, const rf_node_t* weights, int size);
+int rf_store_weights(rf_acc_t *self, const rf_node_t *node, const int size, const int* offsets, const int offsetSize);
 
 int rf_classify(rf_acc_t *self, float *candidates, int size);
 

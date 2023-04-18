@@ -70,7 +70,7 @@ abstract class DecisionTreeMMIO(
     impl.io.in.valid := false.B
     when (impl.io.in.ready && !impl.io.busy) {
       impl.io.in.bits.candidates := candidates
-      impl.io.in.bits.offset := 0.U
+      impl.io.in.bits.offset := 0.U // Tree 0
       impl.io.in.valid := candidateLast
       candidateLast := false.B
     }

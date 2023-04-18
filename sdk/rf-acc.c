@@ -72,12 +72,22 @@ rf_hw_node_t convert_to_hw_node(const rf_node_t *node) {
     return hw_node;
 }
 
-int rf_store_weights(rf_acc_t *self, const rf_node_t *node, int size) {
+int rf_store_weights(rf_acc_t *self, const rf_node_t *node, const int size, const int* offsets, const int offsetSize) {
     volatile uint64_t *spad_ptr = (volatile uint64_t *) rf_acc_scratchpad_address;
 
+    // TODO: Return enum maybe
+    if (offsetSize > 127) {
+        return 1;
+    }
+
+    for (int i=0; i < offsetSize; i++) {
+        spad_ptr[i] = rf_acc_scratchpad_address + ((128 + offsets[i]) << 3);
+    }
+
+    // Start address of weights
     for (int i = 0; i < size; i++) {
         uint64_t hw_weight = convert_to_hw_node(&node[i]);
-        spad_ptr[i] = hw_weight;
+        spad_ptr[128 + i] = hw_weight;
     }
     return 0;
 }
