@@ -3,7 +3,7 @@ package psrf.accelerator
 import chipsalliance.rocketchip.config.{Config, Field}
 import freechips.rocketchip.diplomacy.{AddressSet, LazyModule}
 import freechips.rocketchip.subsystem.BaseSubsystem
-import psrf.params.{DataWidth, DecisionTreeConfig, DecisionTreeConfigKey, FixedPointBinaryPoint, FixedPointWidth}
+import psrf.params.{DecisionTreeConfig, DecisionTreeConfigKey, FixedPointBinaryPoint, FixedPointWidth}
 
 case class TLRandomForestConfig(
   val csrAddress: AddressSet,
@@ -37,7 +37,6 @@ class WithTLRandomForest(
   fixedPointBinaryPoint: Int = 16,
 ) extends Config((site, here, up) => {
   case TLRandomForestKey => Some(TLRandomForestConfig(csrAddress, scratchpadAddress))
-  case DataWidth => 64
   case FixedPointWidth => fixedPointWidth
   case FixedPointBinaryPoint => fixedPointBinaryPoint
   case DecisionTreeConfigKey => DecisionTreeConfig(

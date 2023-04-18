@@ -6,14 +6,14 @@ import chisel3.experimental.FixedPoint
 import chisel3.util.{Enum, log2Ceil}
 import freechips.rocketchip.diplomacy.{AddressSet, IdRange, LazyModule, LazyModuleImp}
 import psrf.modules.{TreeIO, TreeNode}
-import psrf.params.HasVariableDecisionTreeParams
+import psrf.params.HasDecisionTreeParams
 import testchipip.TLHelper
 
 class TLRandomForestNode(val address: AddressSet,
   id: IdRange = IdRange(0, 1),
   beatBytes: Int = 4,
   aligned: Boolean = false,
-)(implicit p: Parameters) extends LazyModule with HasVariableDecisionTreeParams {
+)(implicit p: Parameters) extends LazyModule with HasDecisionTreeParams {
   val psrfMaster = TLHelper.makeClientNode(name=name, sourceId = id)
 
   lazy val module = new LazyModuleImp(this) {

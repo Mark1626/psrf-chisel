@@ -7,8 +7,11 @@ import chisel3.experimental.FixedPoint
 import freechips.rocketchip.diplomacy.{AddressSet, LazyModule, LazyModuleImp}
 import freechips.rocketchip.regmapper.{RegField, RegFieldDesc, RegisterRouter, RegisterRouterParams}
 import freechips.rocketchip.tilelink.HasTLControlRegMap
-import psrf.modules.Candidate
-import psrf.params.{DecisionTreeConfigKey, HasDecisionTreeParams, HasVariableDecisionTreeParams}
+import psrf.params.{DecisionTreeConfigKey, HasDecisionTreeParams}
+
+class Candidate()(implicit val p: Parameters) extends Bundle with HasDecisionTreeParams {
+  val data = FixedPoint(fixedPointWidth.W, fixedPointBinaryPoint.BP)
+}
 
 abstract class DecisionTreeMMIO(
   csrAddress: AddressSet,
@@ -21,7 +24,7 @@ abstract class DecisionTreeMMIO(
     base = csrAddress.base,
     size = csrAddress.mask + 1,
     beatBytes = beatBytes))
-    with HasVariableDecisionTreeParams
+    with HasDecisionTreeParams
 {
   // TODO: Should I just mark this as 64bits
   val dataWidth = beatBytes * 8
