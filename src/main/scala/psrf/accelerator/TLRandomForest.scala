@@ -3,7 +3,7 @@ package psrf.accelerator
 import chipsalliance.rocketchip.config.{Config, Field}
 import freechips.rocketchip.diplomacy.{AddressSet, LazyModule}
 import freechips.rocketchip.subsystem.BaseSubsystem
-import psrf.params.{DecisionTreeConfig, DecisionTreeConfigKey, FixedPointBinaryPoint, FixedPointWidth}
+import psrf.params.{DecisionTreeConfig, DecisionTreeConfigKey, FixedPointBinaryPoint, FixedPointWidth, MaxTrees}
 
 case class TLRandomForestConfig(
   val csrAddress: AddressSet,
@@ -45,4 +45,5 @@ class WithTLRandomForest(
     maxClasses = 10,
     maxDepth = 10
   )
+  case MaxTrees => 10
 })

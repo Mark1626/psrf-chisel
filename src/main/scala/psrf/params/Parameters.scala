@@ -31,6 +31,8 @@ case class DecisionTreeConfig(
   maxDepth: Int
 )
 
+case object MaxTrees extends Field[Int]
+
 case object DecisionTreeConfigKey extends Field[DecisionTreeConfig]
 
 trait HasDecisionTreeParams extends HasFixedPointParams {
@@ -47,5 +49,10 @@ trait HasDecisionTreeParams extends HasFixedPointParams {
   def featureClassIndexWidth = math.max(featureIndexWidth, classIndexWidth)
 
   assert(fixedPointWidth == 32)
-  assert(featureClassIndexWidth <= 11)
+  assert(featureClassIndexWidth <= 9)
+}
+
+trait HasRandomForestParams extends HasDecisionTreeParams {
+  implicit val p: Parameters
+  val maxTrees = p(MaxTrees)
 }

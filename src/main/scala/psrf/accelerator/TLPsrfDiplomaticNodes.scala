@@ -12,7 +12,7 @@ class TLDecisionTreeWithScratchpad(val csrAddress: AddressSet,
   val aligned: Boolean = false
 )(implicit p: Parameters) extends LazyModule {
   val node = TLIdentityNode()
-  val mmio = LazyModule(new TLDecisionTreeMMIO(csrAddress, scratchpadAddress, beatBytes)(p))
+  val mmio = LazyModule(new TLRandomForestMMIO(csrAddress, scratchpadAddress, beatBytes)(p))
 
   val ram = TLRAM(
     address = scratchpadAddress,
