@@ -35,10 +35,41 @@ class RandomForestMMIOModuleSpec extends AnyFlatSpec with ChiselScalatestTester 
       maxClasses = 10,
       maxDepth = 10
     )
-    case MaxTrees => 1
+    case MaxTrees => 3
   })
 
   it should "be able to store candidates and fire request during last candidate" in {
+    test(new RandomForestMMIOModule()(params))
+      .withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+        val helper = new RandomForestMMIOModuleSpecHelper(dut)
+
+        val candidate1 = 0.5
+        val candidate2 = 1.0
+
+        dut.numTrees.poke(1.U)
+        dut.candidateData.initSource()
+        dut.candidateData.setSourceClock(dut.clock)
+        dut.io.in.initSink()
+        dut.io.in.setSinkClock(dut.clock)
+
+        val expected = new TreeInputBundle()(params).Lit(
+          _.candidates -> Vec.Lit(candidate1.F(32.W,16.BP), candidate2.F(32.W,16.BP)),
+          _.offset -> 0.U)
+
+        fork {
+          dut.busy.expect(false.B)
+          dut.candidateData.enqueueSeq(Seq(
+            helper.createCandidate(candidate1).U,
+            helper.createCandidate(candidate2, 1).U
+          ))
+        } .fork {
+          dut.io.in.expectDequeue(expected)
+          dut.busy.expect(true.B)
+        }.join()
+      }
+  }
+
+  it should "be able to run for multiple trees" in {
     test(new RandomForestMMIOModule()(params))
       .withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
         val helper = new RandomForestMMIOModuleSpecHelper(dut)
@@ -50,30 +81,66 @@ class RandomForestMMIOModuleSpec extends AnyFlatSpec with ChiselScalatestTester 
         dut.candidateData.setSourceClock(dut.clock)
         dut.io.in.initSink()
         dut.io.in.setSinkClock(dut.clock)
+        dut.io.out.initSource()
+        dut.io.out.setSourceClock(dut.clock)
 
-        val expected = new TreeInputBundle()(params).Lit(
-          _.candidates -> Vec.Lit(candidate1.F(32.W,16.BP), candidate2.F(32.W,16.BP)),
+        val expected0 = new TreeInputBundle()(params).Lit(
+          _.candidates -> Vec.Lit(candidate1.F(32.W, 16.BP), candidate2.F(32.W, 16.BP)),
           _.offset -> 0.U)
 
-        fork {
-          dut.candidateData.enqueueSeq(Seq(
-            helper.createCandidate(candidate1).U,
-            helper.createCandidate(candidate2, 1).U
-          ))
-        } .fork {
-          dut.io.in.expectDequeue(expected)
-        }.join()
+        val expected1 = new TreeInputBundle()(params).Lit(
+          _.candidates -> Vec.Lit(candidate1.F(32.W, 16.BP), candidate2.F(32.W, 16.BP)),
+          _.offset -> 1.U)
 
+        val expected2 = new TreeInputBundle()(params).Lit(
+          _.candidates -> Vec.Lit(candidate1.F(32.W, 16.BP), candidate2.F(32.W, 16.BP)),
+          _.offset -> 2.U)
 
+        val result = new TreeOutputBundle().Lit(
+          _.classes -> 2.U,
+          _.error -> 0.U
+        )
 
-//        dut.io.in.bits.offset.expect(0)
-//        dut.io.in.bits.candidates(0).expect(candidate1.F(16.BP))
-//        dut.io.in.bits.candidates(1).expect(candidate2.F(16.BP))
-//
-//
-//        dut.clock.step()
-//        dut.io.in.waitForValid()
+        dut.numTrees.poke(2.U)
+        dut.busy.expect(false.B)
+        dut.candidateData.enqueueSeq(Seq(
+          helper.createCandidate(candidate1).U,
+          helper.createCandidate(candidate2, 1).U
+        ))
+
+        dut.io.in.expectDequeue(expected0)
+        dut.busy.expect(true.B)
+        dut.io.out.enqueue(result)
+        dut.decisionValidIO.expect(false.B)
+
+        dut.io.in.expectDequeue(expected1)
+        dut.busy.expect(true.B)
+        dut.io.out.enqueue(result)
+        dut.decisionValidIO.expect(false.B)
+
+        dut.io.in.expectDequeue(expected2)
+        dut.io.out.enqueue(result)
+        dut.decisionValidIO.expect(true.B)
+
+        dut.decisionIO.expect(2)
+
+        //dut.busy.expect(false.B)
 
       }
   }
+
+//  it should "be able to count majority" in {
+//    test(new RandomForestMMIOModule()(params))
+//      .withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+//        val helper = new RandomForestMMIOModuleSpecHelper(dut)
+//
+//        dut.io.out.initSource()
+//        dut.io.out.setSourceClock(dut.clock)
+//
+//        fork {
+//          dut.io.out.enqueueSeq()
+//        }
+//
+//      }
+//  }
 }

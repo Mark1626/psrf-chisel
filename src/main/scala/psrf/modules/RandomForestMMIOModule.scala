@@ -16,17 +16,29 @@ class RandomForestMMIOModule()(implicit val p: Parameters) extends Module with H
   val decisionIO = IO(Output(UInt(32.W)))
   val errorIO = IO(Output(UInt(2.W)))
   val resetDecision = IO(Input(Bool()))
+  val busy = IO(Output(Bool()))
+  val numTrees = IO(Input(UInt(10.W)))
 
-  val idle :: busy :: done :: Nil = Enum(3)
-  val state = RegInit(idle)
+  val s_idle :: s_busy :: s_done :: Nil = Enum(3)
+  val state = RegInit(s_idle)
 
   val candidates = Reg(Vec(maxFeatures, FixedPoint(fixedPointWidth.W, fixedPointBinaryPoint.BP)))
+
+  val currTree = RegInit(0.U((log2Ceil(maxTrees)+1).W))
+  // Decision from all the trees
+  // TODO: How do I know everything is complete
+  val decisions = Reg(Vec(maxTrees, UInt(9.W)))
+  val errors = Reg(Vec(maxTrees, UInt(2.W)))
+
+  // Final decision after counting
   val decision = RegInit(0.U(32.W))
   val decisionValid = RegInit(false.B)
 
   val error = RegInit(0.U(2.W))
   //val candidateLast = Wire(Bool())
-  val candidateLast = RegInit(false.B)
+  val activeClassification = RegInit(false.B)
+
+  busy := state =/= s_idle
 
   candidateData.ready := true.B
   when (candidateData.fire) {
@@ -38,12 +50,11 @@ class RandomForestMMIOModule()(implicit val p: Parameters) extends Module with H
     for (i <- config.maxFeatures-2 to 0 by -1) {
       candidates(i) := candidates(i+1)
     }
-
-//    candidates(0) := candidateValue.asTypeOf(new Candidate()(p).data)
-//    for (i <- 1 until config.maxFeatures) {
-//      candidates(i) := candidates(i - 1)
-//    }
-    candidateLast := last
+    activeClassification := last
+    when (last) {
+      state := s_busy
+      currTree := 0.U
+    }
   }
 
   decisionValidIO := decisionValid
@@ -54,25 +65,35 @@ class RandomForestMMIOModule()(implicit val p: Parameters) extends Module with H
   io.in.bits.candidates := DontCare
   io.in.bits.offset := DontCare
 
+  // TODO: This will not work for multiple trees
   when(io.in.ready && !io.busy) {
     io.in.bits.candidates := candidates
-    io.in.bits.offset := 0.U // Tree 0
-    io.in.valid := candidateLast
+    io.in.bits.offset := currTree
+    io.in.valid := activeClassification
   }
 
-  when (io.in.fire) {
-    candidateLast := false.B
-  }
+  // TODO: This will not work for multiple trees
+//  when (io.in.fire) {
+//    activeClassification := false.B
+//  }
 
   when (resetDecision) {
     decisionValid := false.B
+    state := s_idle
+  }
+
+  when (currTree === numTrees) {
+    decision := decisions(0)
+    error := errors(0)
+    decisionValid := true.B
+    activeClassification := false.B
   }
 
   io.out.ready := true.B
   when(io.out.fire) {
-    decision := io.out.bits.classes
-    error := io.out.bits.error
-    decisionValid := true.B
+    decisions(currTree) := io.out.bits.classes
+    errors(currTree) := io.out.bits.error
+    currTree := currTree + 1.U
   }
   
 }

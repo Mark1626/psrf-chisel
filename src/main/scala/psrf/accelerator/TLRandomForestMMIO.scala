@@ -36,6 +36,7 @@ abstract class RandomForestMMIO(
     val impl = tlMaster.module
 
     val decisionValid = Wire(Bool())
+    val numTrees = RegInit(0.U(9.W))
 
     val error = Wire(UInt(2.W))
     val decision = Wire(UInt(32.W))
@@ -47,6 +48,8 @@ abstract class RandomForestMMIO(
     decision := mmioHandler.decisionIO
     error := mmioHandler.errorIO
 
+    mmioHandler.numTrees := numTrees
+
     mmioHandler.candidateData.valid := false.B
     mmioHandler.candidateData.bits := DontCare
     mmioHandler.resetDecision := false.B
@@ -56,7 +59,7 @@ abstract class RandomForestMMIO(
         mmioHandler.candidateData.valid := true.B
         mmioHandler.candidateData.bits := data
       }
-      mmioHandler.candidateData.ready
+      mmioHandler.candidateData.ready && !mmioHandler.busy
     }
 
     def handleResult(ready: Bool): (Bool, UInt) = {
@@ -67,12 +70,20 @@ abstract class RandomForestMMIO(
       (ready && decisionValid, Cat(error, decision))
     }
 
+    def handleMeta(valid: Bool, data: UInt): Bool = {
+      when (valid) {
+        numTrees := data - 1.U
+      }
+      !mmioHandler.busy
+    }
+
     val csr = Cat(0.U(62.W), impl.io.busy, decisionValid)
 
     regmap(
       beatBytes * 0 -> Seq(RegField.r(dataWidth, csr, RegFieldDesc(name="csr", desc="Control Status Register"))),
       beatBytes * 1 -> Seq(RegField.w(dataWidth, handleCandidate(_, _), RegFieldDesc(name="candidate-in", desc="Port for passing candidates"))),
-      beatBytes * 2 -> Seq(RegField.r(dataWidth, handleResult(_), RegFieldDesc(name="decision", desc="Result of a classification")))
+      beatBytes * 2 -> Seq(RegField.r(dataWidth, handleResult(_), RegFieldDesc(name="decision", desc="Result of a classification"))),
+      beatBytes * 3 -> Seq(RegField.w(dataWidth, handleMeta(_, _)))
     )
   }
 }

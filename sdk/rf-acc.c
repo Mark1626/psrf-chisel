@@ -95,7 +95,7 @@ int rf_store_weights(rf_acc_t *self, const rf_node_t *node, const int size, cons
 int rf_classify(rf_acc_t *self, float *candidates, int size) {
     volatile uint64_t *csr_ptr = (volatile uint64_t *) rf_acc_csr_address;
     // TODO: Change this
-    if (csr_ptr[0]) {
+    if (!csr_ptr[0]) {
         for (int i=0; i < self->num_features-1; i++) {
             csr_ptr[1] = toFixedPoint(candidates[i]);
         }
@@ -104,7 +104,7 @@ int rf_classify(rf_acc_t *self, float *candidates, int size) {
         val += 1LL << 50;
         csr_ptr[1] = val;
 
-        while (csr_ptr[0] & 1);
+        while (!(csr_ptr[0] & 1)) ;
 
         return csr_ptr[2];
     }
