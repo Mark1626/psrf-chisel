@@ -19,7 +19,7 @@ class RandomForestMMIOModule()(implicit val p: Parameters) extends Module with H
   val busy = IO(Output(Bool()))
   val numTrees = IO(Input(UInt(10.W)))
 
-  val s_idle :: s_busy :: s_done :: Nil = Enum(3)
+  val s_idle :: s_busy :: s_count :: s_done :: Nil = Enum(4)
   val state = RegInit(s_idle)
 
   val candidates = Reg(Vec(maxFeatures, FixedPoint(fixedPointWidth.W, fixedPointBinaryPoint.BP)))
@@ -40,7 +40,8 @@ class RandomForestMMIOModule()(implicit val p: Parameters) extends Module with H
 
   busy := state =/= s_idle
 
-  candidateData.ready := true.B
+  // TODO: Change this
+  candidateData.ready := state === s_idle
   when (candidateData.fire) {
     val last = candidateData.bits(50)
     val candidateId = candidateData.bits(49, 32)
@@ -65,35 +66,41 @@ class RandomForestMMIOModule()(implicit val p: Parameters) extends Module with H
   io.in.bits.candidates := DontCare
   io.in.bits.offset := DontCare
 
-  // TODO: This will not work for multiple trees
-  when(io.in.ready && !io.busy) {
+  when(state === s_busy && io.in.ready && !io.busy) {
     io.in.bits.candidates := candidates
     io.in.bits.offset := currTree
     io.in.valid := activeClassification
   }
 
-  // TODO: This will not work for multiple trees
-//  when (io.in.fire) {
-//    activeClassification := false.B
-//  }
-
-  when (resetDecision) {
-    decisionValid := false.B
-    state := s_idle
+  when (state === s_busy && currTree === numTrees) {
+    state := s_done
   }
 
-  when (currTree === numTrees) {
+  when (state === s_done) {
     decision := decisions(0)
     error := errors(0)
     decisionValid := true.B
     activeClassification := false.B
   }
 
+//  when (state === s_done) {
+//    decision := decisions(0)
+//    error := errors(0)
+//    decisionValid := true.B
+//    activeClassification := false.B
+//  }
+
   io.out.ready := true.B
   when(io.out.fire) {
     decisions(currTree) := io.out.bits.classes
     errors(currTree) := io.out.bits.error
     currTree := currTree + 1.U
+  }
+
+  when(resetDecision) {
+    decisionValid := false.B
+    state := s_idle
+    currTree := 0.U
   }
   
 }

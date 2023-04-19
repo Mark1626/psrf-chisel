@@ -8,6 +8,7 @@ rf_acc_t* rf_init(rf_error_codes *res,
     int num_trees,
     int num_nodes,
     int depth) {
+
     int result = 0;
 
     // TODO: Do we have individual return and indiviual error message
@@ -22,6 +23,9 @@ rf_acc_t* rf_init(rf_error_codes *res,
         *res = ARGUMENT_GREATER_THAN_MAX_SUPPORTED;
         return NULL;
     }
+
+    volatile uint64_t *csr_ptr = (volatile uint64_t *) rf_acc_csr_address;
+    csr_ptr[3] = num_trees;
 
     rf_acc_t *self = malloc(sizeof(rf_acc_t));
     if (!self) {
@@ -81,7 +85,7 @@ int rf_store_weights(rf_acc_t *self, const rf_node_t *node, const int size, cons
     }
 
     for (int i=0; i < offsetSize; i++) {
-        spad_ptr[i] = rf_acc_scratchpad_address + ((128 + offsets[i]) << 3);
+        spad_ptr[i] = offsets[i];
     }
 
     // Start address of weights
@@ -104,7 +108,7 @@ int rf_classify(rf_acc_t *self, float *candidates, int size) {
         val += 1LL << 50;
         csr_ptr[1] = val;
 
-        while (!(csr_ptr[0] & 1)) ;
+        while (!(csr_ptr[0] & 1)) { continue; };
 
         return csr_ptr[2];
     }

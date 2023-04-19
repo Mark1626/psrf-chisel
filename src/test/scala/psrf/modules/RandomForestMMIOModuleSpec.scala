@@ -26,7 +26,7 @@ class RandomForestMMIOModuleSpecHelper(dut: RandomForestMMIOModule) {
 }
 
 class RandomForestMMIOModuleSpec extends AnyFlatSpec with ChiselScalatestTester {
-  val params = new Config((site, here, up) => {
+  val threeTreesParams = new Config((site, here, up) => {
     case FixedPointWidth => Constants.fpWidth
     case FixedPointBinaryPoint => Constants.bpWidth
     case DecisionTreeConfigKey => DecisionTreeConfig(
@@ -37,9 +37,20 @@ class RandomForestMMIOModuleSpec extends AnyFlatSpec with ChiselScalatestTester 
     )
     case MaxTrees => 3
   })
+  val oneTreeParams = new Config((site, here, up) => {
+    case FixedPointWidth => Constants.fpWidth
+    case FixedPointBinaryPoint => Constants.bpWidth
+    case DecisionTreeConfigKey => DecisionTreeConfig(
+      maxFeatures = 2,
+      maxNodes = 10,
+      maxClasses = 10,
+      maxDepth = 10
+    )
+    case MaxTrees => 1
+  })
 
   it should "be able to store candidates and fire request during last candidate" in {
-    test(new RandomForestMMIOModule()(params))
+    test(new RandomForestMMIOModule()(oneTreeParams))
       .withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
         val helper = new RandomForestMMIOModuleSpecHelper(dut)
 
@@ -52,7 +63,7 @@ class RandomForestMMIOModuleSpec extends AnyFlatSpec with ChiselScalatestTester 
         dut.io.in.initSink()
         dut.io.in.setSinkClock(dut.clock)
 
-        val expected = new TreeInputBundle()(params).Lit(
+        val expected = new TreeInputBundle()(oneTreeParams).Lit(
           _.candidates -> Vec.Lit(candidate1.F(32.W,16.BP), candidate2.F(32.W,16.BP)),
           _.offset -> 0.U)
 
@@ -69,8 +80,8 @@ class RandomForestMMIOModuleSpec extends AnyFlatSpec with ChiselScalatestTester 
       }
   }
 
-  it should "be able to run for multiple trees" in {
-    test(new RandomForestMMIOModule()(params))
+  it should "return decisionValid for 1 tree when classification is done" in {
+    test(new RandomForestMMIOModule()(oneTreeParams))
       .withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
         val helper = new RandomForestMMIOModuleSpecHelper(dut)
 
@@ -84,15 +95,59 @@ class RandomForestMMIOModuleSpec extends AnyFlatSpec with ChiselScalatestTester 
         dut.io.out.initSource()
         dut.io.out.setSourceClock(dut.clock)
 
-        val expected0 = new TreeInputBundle()(params).Lit(
+        val expected = new TreeInputBundle()(oneTreeParams).Lit(
           _.candidates -> Vec.Lit(candidate1.F(32.W, 16.BP), candidate2.F(32.W, 16.BP)),
           _.offset -> 0.U)
 
-        val expected1 = new TreeInputBundle()(params).Lit(
+        val result = new TreeOutputBundle().Lit(
+          _.classes -> 2.U,
+          _.error -> 0.U
+        )
+
+        dut.numTrees.poke(1.U)
+        dut.busy.expect(false.B)
+        dut.candidateData.enqueueSeq(Seq(
+          helper.createCandidate(candidate1).U,
+          helper.createCandidate(candidate2, 1).U
+        ))
+
+        dut.decisionValidIO.expect(false.B)
+
+        dut.io.in.expectDequeue(expected)
+        dut.busy.expect(true.B)
+        dut.io.out.enqueue(result)
+
+        dut.clock.step(2)
+
+        dut.decisionValidIO.expect(true.B)
+        dut.decisionIO.expect(2)
+      }
+  }
+
+  it should "be able to run for multiple trees" in {
+    test(new RandomForestMMIOModule()(threeTreesParams))
+      .withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+        val helper = new RandomForestMMIOModuleSpecHelper(dut)
+
+        val candidate1 = 0.5
+        val candidate2 = 1.0
+
+        dut.candidateData.initSource()
+        dut.candidateData.setSourceClock(dut.clock)
+        dut.io.in.initSink()
+        dut.io.in.setSinkClock(dut.clock)
+        dut.io.out.initSource()
+        dut.io.out.setSourceClock(dut.clock)
+
+        val expected0 = new TreeInputBundle()(threeTreesParams).Lit(
+          _.candidates -> Vec.Lit(candidate1.F(32.W, 16.BP), candidate2.F(32.W, 16.BP)),
+          _.offset -> 0.U)
+
+        val expected1 = new TreeInputBundle()(threeTreesParams).Lit(
           _.candidates -> Vec.Lit(candidate1.F(32.W, 16.BP), candidate2.F(32.W, 16.BP)),
           _.offset -> 1.U)
 
-        val expected2 = new TreeInputBundle()(params).Lit(
+        val expected2 = new TreeInputBundle()(threeTreesParams).Lit(
           _.candidates -> Vec.Lit(candidate1.F(32.W, 16.BP), candidate2.F(32.W, 16.BP)),
           _.offset -> 2.U)
 
@@ -101,7 +156,7 @@ class RandomForestMMIOModuleSpec extends AnyFlatSpec with ChiselScalatestTester 
           _.error -> 0.U
         )
 
-        dut.numTrees.poke(2.U)
+        dut.numTrees.poke(3.U)
         dut.busy.expect(false.B)
         dut.candidateData.enqueueSeq(Seq(
           helper.createCandidate(candidate1).U,
@@ -120,27 +175,12 @@ class RandomForestMMIOModuleSpec extends AnyFlatSpec with ChiselScalatestTester 
 
         dut.io.in.expectDequeue(expected2)
         dut.io.out.enqueue(result)
+
+        dut.clock.step(2)
+
         dut.decisionValidIO.expect(true.B)
-
         dut.decisionIO.expect(2)
-
-        //dut.busy.expect(false.B)
-
       }
   }
 
-//  it should "be able to count majority" in {
-//    test(new RandomForestMMIOModule()(params))
-//      .withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
-//        val helper = new RandomForestMMIOModuleSpecHelper(dut)
-//
-//        dut.io.out.initSource()
-//        dut.io.out.setSourceClock(dut.clock)
-//
-//        fork {
-//          dut.io.out.enqueueSeq()
-//        }
-//
-//      }
-//  }
 }

@@ -43,18 +43,26 @@ int main() {
     weights[1].left = 1;
     weights[1].right = 1;
 
+
     int *offsets = malloc(sizeof(int) * num_trees);
     offsets[0] = 0;
 
     rf_store_weights(acc, weights, num_nodes, offsets, 1);
 
+    volatile uint64_t *csr_ptr = (volatile uint64_t *) rf_acc_csr_address;
+
     float *candidates = malloc(2 * sizeof(float));
     candidates[0] = 0.0f;
     candidates[1] = 0.5f;
 
+    printf("CSR0: %x\n", csr_ptr[0]);
+
     int decision = rf_classify(acc, candidates, 2);
+
+    printf("CSR1: %x\n", csr_ptr[0]);
     printf("Decision: %d\n", decision);
 
+    printf("CSR2: %x\n", csr_ptr[0]);
     decision = rf_classify(acc, candidates, 2);
     printf("Decision: %d\n", decision);
 

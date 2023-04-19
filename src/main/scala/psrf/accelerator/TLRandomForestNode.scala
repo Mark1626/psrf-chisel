@@ -79,7 +79,8 @@ class TLRandomForestNode(val address: AddressSet,
     when(state === bus_resp_wait && mem.d.fire) {
       // First time we get tree's root node address
       when (readRootNode) {
-        nodeAddr := mem.d.bits.data
+        // TODO: Move the constant 128 outside
+        nodeAddr := address.base.U(32.W) + ((128.U + mem.d.bits.data) << beatBytesShift)
         readRootNode := false.B
         state := bus_req_wait
       } .otherwise {
