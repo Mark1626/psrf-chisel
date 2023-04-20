@@ -18,34 +18,36 @@ class MajorityVoterIO()(implicit p: Parameters) extends MajorityVoterBundle {
   // TODO: Move this constant outside
   val in = Flipped(Decoupled(Vec(maxTrees, UInt(classIndexWidth.W))))
   val out = Irrevocable(new MajorityVoterOut()(p))
+  val numTrees = Input(UInt(10.W))
+  val numClasses = Input(UInt(10.W))
 }
 
 class MajorityVoterModule()(implicit val p: Parameters) extends Module with HasRandomForestParams {
   val io = IO(new MajorityVoterIO()(p))
 
-  if (maxClasses == 2) {
-    val countWidth = log2Ceil(maxTrees) + 1
-    val countThreshold = math.ceil(maxTrees.toDouble / 2).toInt.U(countWidth.W)
-
-    val pipeEnq = Wire(Decoupled(UInt(countWidth.W)))
-    val pipeQueue = Queue(pipeEnq, 1)
-    val count = PopCount(io.in.bits.map(_.asBool))
-
-    pipeEnq.valid := io.in.valid
-    io.in.ready := pipeEnq.ready
-    pipeEnq.bits := count
-
-    pipeQueue.ready := io.out.ready
-    io.out.valid := pipeQueue.valid
-
-    if (maxTrees % 2 == 0) {
-      io.out.bits.classification := pipeQueue.bits > countThreshold
-      io.out.bits.noClearMajority := pipeQueue.bits === countThreshold
-    } else {
-      io.out.bits.classification := pipeQueue.bits >= countThreshold
-      io.out.bits.noClearMajority := false.B
-    }
-  } else {
+//  if (maxClasses == 2) {
+//    val countWidth = log2Ceil(maxTrees) + 1
+//    val countThreshold = math.ceil(maxTrees.toDouble / 2).toInt.U(countWidth.W)
+//
+//    val pipeEnq = Wire(Decoupled(UInt(countWidth.W)))
+//    val pipeQueue = Queue(pipeEnq, 1)
+//    val count = PopCount(io.in.bits.map(_.asBool))
+//
+//    pipeEnq.valid := io.in.valid
+//    io.in.ready := pipeEnq.ready
+//    pipeEnq.bits := count
+//
+//    pipeQueue.ready := io.out.ready
+//    io.out.valid := pipeQueue.valid
+//
+//    if (maxTrees % 2 == 0) {
+//      io.out.bits.classification := pipeQueue.bits > countThreshold
+//      io.out.bits.noClearMajority := pipeQueue.bits === countThreshold
+//    } else {
+//      io.out.bits.classification := pipeQueue.bits >= countThreshold
+//      io.out.bits.noClearMajority := false.B
+//    }
+//  } else {
     val idle :: busy :: done :: Nil = Enum(3)
     val count :: compare :: Nil = Enum(2)
 
@@ -60,10 +62,12 @@ class MajorityVoterModule()(implicit val p: Parameters) extends Module with HasR
     val noClearMajority = RegInit(false.B)
 
     val decisionInputCountCond = WireDefault(false.B)
-    val (decisionInputCount, decisionInputCountWrap) = Counter(decisionInputCountCond, maxTrees)
+    val decisionInputCounter = Counter(maxTrees)
+    val decisionInputCountWrap = decisionInputCounter.value === io.numTrees - 1.U
 
     val classCountCond = WireDefault(false.B)
-    val (classCount, classCountWrap) = Counter(classCountCond, maxClasses)
+    val classCounter = Counter(maxClasses)
+    val classCountWrap = classCounter.value === io.numClasses - 1.U
 
     io.in.ready := false.B
     io.out.valid := false.B
@@ -84,22 +88,22 @@ class MajorityVoterModule()(implicit val p: Parameters) extends Module with HasR
       is(busy) {
         switch(busyState) {
           is(count) {
-            decisionInputCountCond := true.B
-            val currClassIndex = decisions(decisionInputCount)
+            decisionInputCounter.inc()
+            val currClassIndex = decisions(decisionInputCounter.value)
             voteCount(currClassIndex) := voteCount(currClassIndex) + 1.U
             when(decisionInputCountWrap) {
               busyState := compare
             }
           }
           is(compare) {
-            classCountCond := true.B
-            when(classCount === 0.U) {
+            classCounter.inc()
+            when(classCounter.value === 0.U) {
               maxClass := 0.U
               noClearMajority := false.B
-            }.elsewhen(voteCount(classCount) > voteCount(maxClass)) {
-              maxClass := classCount
+            }.elsewhen(voteCount(classCounter.value) > voteCount(maxClass)) {
+              maxClass := classCounter.value
               noClearMajority := false.B
-            }.elsewhen(voteCount(classCount) === voteCount(maxClass)) {
+            }.elsewhen(voteCount(classCounter.value) === voteCount(maxClass)) {
               noClearMajority := true.B
             }
             when(classCountWrap) {
@@ -112,11 +116,13 @@ class MajorityVoterModule()(implicit val p: Parameters) extends Module with HasR
         io.out.valid := true.B
         io.out.bits.classification := maxClass
         io.out.bits.noClearMajority := noClearMajority
+        classCounter.reset()
+        decisionInputCounter.reset()
         when(rest) {
           state := idle
         }
       }
     }
-  }
+//  }
 
 }

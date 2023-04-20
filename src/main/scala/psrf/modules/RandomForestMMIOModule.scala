@@ -18,6 +18,9 @@ class RandomForestMMIOModule()(implicit val p: Parameters) extends Module with H
   val resetDecision = IO(Input(Bool()))
   val busy = IO(Output(Bool()))
   val numTrees = IO(Input(UInt(10.W)))
+  val numClasses = IO(Input(UInt(10.W)))
+
+  val majorityVoter = Module(new MajorityVoterModule()(p))
 
   val s_idle :: s_busy :: s_count :: s_done :: Nil = Enum(4)
   val state = RegInit(s_idle)
@@ -40,23 +43,14 @@ class RandomForestMMIOModule()(implicit val p: Parameters) extends Module with H
 
   busy := state =/= s_idle
 
-  // TODO: Change this
-  candidateData.ready := state === s_idle
-  when (candidateData.fire) {
-    val last = candidateData.bits(50)
-    val candidateId = candidateData.bits(49, 32)
-    val candidateValue = candidateData.bits(31, 0)
+  majorityVoter.io.in.valid := false.B
+  majorityVoter.io.in.bits := DontCare
+  majorityVoter.io.out.ready := state === s_count
 
-    candidates(config.maxFeatures-1) := candidateValue.asTypeOf(new Candidate()(p).data)
-    for (i <- config.maxFeatures-2 to 0 by -1) {
-      candidates(i) := candidates(i+1)
-    }
-    activeClassification := last
-    when (last) {
-      state := s_busy
-      currTree := 0.U
-    }
-  }
+  majorityVoter.io.numClasses := numClasses
+  majorityVoter.io.numTrees := numTrees
+
+  candidateData.ready := state === s_idle
 
   decisionValidIO := decisionValid
   decisionIO := decision
@@ -66,6 +60,22 @@ class RandomForestMMIOModule()(implicit val p: Parameters) extends Module with H
   io.in.bits.candidates := DontCare
   io.in.bits.offset := DontCare
 
+  when(candidateData.fire) {
+    val last = candidateData.bits(50)
+    val candidateId = candidateData.bits(49, 32)
+    val candidateValue = candidateData.bits(31, 0)
+
+    candidates(config.maxFeatures - 1) := candidateValue.asTypeOf(new Candidate()(p).data)
+    for (i <- config.maxFeatures - 2 to 0 by -1) {
+      candidates(i) := candidates(i + 1)
+    }
+    activeClassification := last
+    when(last) {
+      state := s_busy
+      currTree := 0.U
+    }
+  }
+
   when(state === s_busy && io.in.ready && !io.busy) {
     io.in.bits.candidates := candidates
     io.in.bits.offset := currTree
@@ -73,15 +83,30 @@ class RandomForestMMIOModule()(implicit val p: Parameters) extends Module with H
   }
 
   when (state === s_busy && currTree === numTrees) {
-    state := s_done
+    state := s_count
+    majorityVoter.io.in.valid := true.B
+    majorityVoter.io.in.bits := decisions
   }
 
-  when (state === s_done) {
-    decision := decisions(0)
+  // TODO: Check errors from trees before counting
+
+  // TODO: Check ready of majority voter
+  when (state === s_count && majorityVoter.io.out.fire) {
+    decision := majorityVoter.io.out.bits.classification
+    // TODO: Add handling for no clear majority
+    // TODO: Add error handling
     error := errors(0)
     decisionValid := true.B
+    state := s_done
     activeClassification := false.B
   }
+
+  //when (state === s_done) {
+//    decision := decisions(0)
+//    error := errors(0)
+//    decisionValid := true.B
+    //activeClassification := false.B
+  //}
 
 //  when (state === s_done) {
 //    decision := decisions(0)

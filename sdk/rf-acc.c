@@ -25,7 +25,9 @@ rf_acc_t* rf_init(rf_error_codes *res,
     }
 
     volatile uint64_t *csr_ptr = (volatile uint64_t *) rf_acc_csr_address;
-    csr_ptr[3] = num_trees;
+    int64_t val = num_trees;
+    val += (num_classes << 10);
+    csr_ptr[3] = val;
 
     rf_acc_t *self = malloc(sizeof(rf_acc_t));
     if (!self) {
@@ -114,4 +116,3 @@ int rf_classify(rf_acc_t *self, float *candidates, int size) {
     }
     return -1;
 }
-

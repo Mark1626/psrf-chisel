@@ -36,7 +36,9 @@ abstract class RandomForestMMIO(
     val impl = tlMaster.module
 
     val decisionValid = Wire(Bool())
-    val numTrees = RegInit(1.U(9.W))
+    // TODO: Revisit the constants
+    val numTrees = RegInit(1.U(10.W))
+    val numClasses = RegInit(1.U(10.W))
 
     val error = Wire(UInt(2.W))
     val decision = Wire(UInt(32.W))
@@ -49,6 +51,7 @@ abstract class RandomForestMMIO(
     error := mmioHandler.errorIO
 
     mmioHandler.numTrees := numTrees
+    mmioHandler.numClasses := numClasses
 
     mmioHandler.candidateData.valid := false.B
     mmioHandler.candidateData.bits := DontCare
@@ -72,7 +75,8 @@ abstract class RandomForestMMIO(
 
     def handleMeta(valid: Bool, data: UInt): Bool = {
       when (valid) {
-        numTrees := data
+        numTrees := data(9, 0)
+        numClasses := data(19, 10)
       }
       !mmioHandler.busy
     }

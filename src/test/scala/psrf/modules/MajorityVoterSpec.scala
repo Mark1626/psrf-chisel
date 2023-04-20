@@ -18,24 +18,30 @@ class MajorityVoterSpec extends AnyFlatSpec with ChiselScalatestTester with Matc
                                expectedClassification:  Int,
                                expectedNoClearMajority: Option[Boolean] = None
                              ): Unit = {
-    val annos = Seq(WriteVcdAnnotation, VerilatorBackendAnnotation)
+    val annos = Seq(WriteVcdAnnotation)
+    val classWidth = log2Ceil(10)
     val p = (new DefaultConfig).alterMap(
       Map(
         FixedPointWidth -> 32,
         FixedPointBinaryPoint -> 16,
-        MaxTrees   -> numTrees,
+        MaxTrees   -> 10,
         DecisionTreeConfigKey ->
           DecisionTreeConfig(
             maxFeatures = 2,
             maxNodes = 10,
-            maxClasses = numClasses,
+            maxClasses = 10,
             maxDepth = 10
           )
       )
     )
-    val decisions = Vec.Lit(inDecisions.map(_.U): _*)
+    val inDecisionMod = inDecisions ++ Seq.fill(10 - numTrees)(0)
+    val decisions = Vec.Lit(inDecisionMod.map(_.U(classWidth.W)): _*)
 
     test(new MajorityVoterModule()(p)).withAnnotations(annos) { dut =>
+      dut.io.numClasses.poke(numClasses)
+      dut.io.numTrees.poke(numTrees)
+      dut.clock.step()
+
       dut.io.in.valid.poke(false.B)
       dut.io.in.ready.expect(true.B)
       dut.clock.step()
@@ -58,26 +64,33 @@ class MajorityVoterSpec extends AnyFlatSpec with ChiselScalatestTester with Matc
                             expectedNoClearMajority: Seq[Boolean]
                           ): Unit = {
     val annos = Seq(WriteVcdAnnotation)
+    val classWidth = log2Ceil(10)
     val p = (new DefaultConfig).alterMap(
       Map(
         FixedPointWidth -> 32,
         FixedPointBinaryPoint -> 16,
-        MaxTrees -> numTrees,
+        MaxTrees -> 10,
         DecisionTreeConfigKey ->
           DecisionTreeConfig(
             maxFeatures = 2,
             maxNodes = 10,
-            maxClasses = numClasses,
+            maxClasses = 10,
             maxDepth = 10
           )
       )
     )
-    val decisions = inDecisions.map(d => Vec.Lit(d.map(_.U): _*))
+    val decisions = inDecisions.map(d =>
+      Vec.Lit(
+        (d ++ Seq.fill(10-numTrees)(0)).map(_.U(classWidth.W)): _*)
+    )
+
     val expected = expectedClassifications
       .zip(expectedNoClearMajority)
       .map(x => (new MajorityVoterOut()(p)).Lit(_.classification -> x._1.U, _.noClearMajority -> x._2.B))
 
     test(new MajorityVoterModule()(p)).withAnnotations(annos) { dut =>
+      dut.io.numClasses.poke(numClasses)
+      dut.io.numTrees.poke(numTrees)
       dut.io.in.initSource()
       dut.io.in.setSourceClock(dut.clock)
       dut.io.out.initSink()
@@ -141,6 +154,8 @@ class MajorityVoterSpec extends AnyFlatSpec with ChiselScalatestTester with Matc
     val decisions = Vec.Lit(inDecisions.map(_.U): _*)
 
     test(new MajorityVoterModule()(p)).withAnnotations(annos) { dut =>
+      dut.io.numClasses.poke(numClasses)
+      dut.io.numTrees.poke(numTrees)
       dut.io.in.valid.poke(false.B)
       dut.io.in.ready.expect(true.B)
       dut.clock.step()

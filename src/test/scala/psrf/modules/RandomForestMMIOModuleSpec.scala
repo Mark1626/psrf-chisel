@@ -57,6 +57,7 @@ class RandomForestMMIOModuleSpec extends AnyFlatSpec with ChiselScalatestTester 
         val candidate1 = 0.5
         val candidate2 = 1.0
 
+        dut.numClasses.poke(2.U)
         dut.numTrees.poke(1.U)
         dut.candidateData.initSource()
         dut.candidateData.setSourceClock(dut.clock)
@@ -100,10 +101,11 @@ class RandomForestMMIOModuleSpec extends AnyFlatSpec with ChiselScalatestTester 
           _.offset -> 0.U)
 
         val result = new TreeOutputBundle().Lit(
-          _.classes -> 2.U,
+          _.classes -> 1.U,
           _.error -> 0.U
         )
 
+        dut.numClasses.poke(4.U)
         dut.numTrees.poke(1.U)
         dut.busy.expect(false.B)
         dut.candidateData.enqueueSeq(Seq(
@@ -117,10 +119,11 @@ class RandomForestMMIOModuleSpec extends AnyFlatSpec with ChiselScalatestTester 
         dut.busy.expect(true.B)
         dut.io.out.enqueue(result)
 
-        dut.clock.step(2)
+        // 3 + numClasses cycles are need to get response from majority voter
+        dut.clock.step(7)
 
         dut.decisionValidIO.expect(true.B)
-        dut.decisionIO.expect(2)
+        dut.decisionIO.expect(1)
       }
   }
 
@@ -156,6 +159,7 @@ class RandomForestMMIOModuleSpec extends AnyFlatSpec with ChiselScalatestTester 
           _.error -> 0.U
         )
 
+        dut.numClasses.poke(3.U)
         dut.numTrees.poke(3.U)
         dut.busy.expect(false.B)
         dut.candidateData.enqueueSeq(Seq(
@@ -176,10 +180,75 @@ class RandomForestMMIOModuleSpec extends AnyFlatSpec with ChiselScalatestTester 
         dut.io.in.expectDequeue(expected2)
         dut.io.out.enqueue(result)
 
-        dut.clock.step(2)
+        dut.clock.step(8)
 
         dut.decisionValidIO.expect(true.B)
         dut.decisionIO.expect(2)
+      }
+  }
+
+  it should "be able to run for multiple trees and return majority" in {
+    test(new RandomForestMMIOModule()(threeTreesParams))
+      .withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+        val helper = new RandomForestMMIOModuleSpecHelper(dut)
+
+        val candidate1 = 0.5
+        val candidate2 = 1.0
+
+        dut.candidateData.initSource()
+        dut.candidateData.setSourceClock(dut.clock)
+        dut.io.in.initSink()
+        dut.io.in.setSinkClock(dut.clock)
+        dut.io.out.initSource()
+        dut.io.out.setSourceClock(dut.clock)
+
+        val expected0 = new TreeInputBundle()(threeTreesParams).Lit(
+          _.candidates -> Vec.Lit(candidate1.F(32.W, 16.BP), candidate2.F(32.W, 16.BP)),
+          _.offset -> 0.U)
+
+        val expected1 = new TreeInputBundle()(threeTreesParams).Lit(
+          _.candidates -> Vec.Lit(candidate1.F(32.W, 16.BP), candidate2.F(32.W, 16.BP)),
+          _.offset -> 1.U)
+
+        val expected2 = new TreeInputBundle()(threeTreesParams).Lit(
+          _.candidates -> Vec.Lit(candidate1.F(32.W, 16.BP), candidate2.F(32.W, 16.BP)),
+          _.offset -> 2.U)
+
+        val result0 = new TreeOutputBundle().Lit(
+          _.classes -> 2.U,
+          _.error -> 0.U
+        )
+
+        val result1 = new TreeOutputBundle().Lit(
+          _.classes -> 1.U,
+          _.error -> 0.U
+        )
+
+        dut.numClasses.poke(3.U)
+        dut.numTrees.poke(3.U)
+        dut.busy.expect(false.B)
+        dut.candidateData.enqueueSeq(Seq(
+          helper.createCandidate(candidate1).U,
+          helper.createCandidate(candidate2, 1).U
+        ))
+
+        dut.io.in.expectDequeue(expected0)
+        dut.busy.expect(true.B)
+        dut.io.out.enqueue(result0)
+        dut.decisionValidIO.expect(false.B)
+
+        dut.io.in.expectDequeue(expected1)
+        dut.busy.expect(true.B)
+        dut.io.out.enqueue(result1)
+        dut.decisionValidIO.expect(false.B)
+
+        dut.io.in.expectDequeue(expected2)
+        dut.io.out.enqueue(result1)
+
+        dut.clock.step(8)
+
+        dut.decisionValidIO.expect(true.B)
+        dut.decisionIO.expect(1)
       }
   }
 

@@ -18,7 +18,7 @@ static int64_t toFixedPoint(float x) {
 int main() {
     int num_trees = 1;
     int num_features = 2;
-    int num_classes = 2;
+    int num_classes = 3;
     int depth = 16;
     int num_nodes = 2;
     rf_error_codes res;
@@ -46,6 +46,7 @@ int main() {
 
     int *offsets = malloc(sizeof(int) * num_trees);
     offsets[0] = 0;
+    offsets[1] = 0;
 
     rf_store_weights(acc, weights, num_nodes, offsets, 1);
 
@@ -66,6 +67,7 @@ int main() {
     decision = rf_classify(acc, candidates, 2);
     printf("Decision: %d\n", decision);
 
+    free(offsets);
     free(weights);
     rf_delete(acc);
 }
