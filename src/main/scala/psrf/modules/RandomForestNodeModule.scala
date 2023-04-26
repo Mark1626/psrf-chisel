@@ -1,6 +1,5 @@
 package psrf.modules
 
-
 import chisel3._
 import chisel3.experimental.FixedPoint
 import chisel3.util._
@@ -28,6 +27,9 @@ class RandomForestNodeModule(
   val node_rd = Reg(new TreeNode()(p))
   val nodeAddr = RegInit(address_base.U)
 
+  val inputCountCond = WireDefault(false.B)
+  val (_, inputCountWrap) = Counter(inputCountCond, maxDepth)
+
   val error = RegInit(0.U(2.W))
 
   //val offset = Reg(UInt(32.W))
@@ -37,7 +39,6 @@ class RandomForestNodeModule(
   io.in.ready := state === idle
   io.out.valid := state === done
   io.out.bits.classes := node_rd.featureClassIndex
-
   io.out.bits.error := error
 
   // TODO: Add a condition to make sure nodeAddress does not exceed scratchpad size
@@ -78,6 +79,7 @@ class RandomForestNodeModule(
       state := bus_req_wait
     }.otherwise {
       // Rest of the time it's nodes for the tree
+      inputCountCond := true.B
       val node = busResp.bits.asTypeOf(node_rd)
       node_rd := node
 
@@ -92,6 +94,11 @@ class RandomForestNodeModule(
         state := bus_req_wait
       }
     }
+  }
+
+  when(inputCountWrap) {
+    state := done
+    error := 2.U
   }
 
   when(state === done && io.out.ready) {
