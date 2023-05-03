@@ -23,7 +23,6 @@ class RandomForestNodeModule(
   val state = RegInit(idle)
   val candidate = Reg(Vec(maxFeatures, FixedPoint(fixedPointWidth.W, fixedPointBinaryPoint.BP)))
 
-  // -1.995848273771531
   val node_rd = Reg(new TreeNode()(p))
   val nodeAddr = RegInit(address_base.U)
 
@@ -90,7 +89,7 @@ class RandomForestNodeModule(
         state := done
       }.otherwise {
         val jumpOffset: UInt = Mux(featureValue <= node.threshold, node.leftNode, node.rightNode)
-        nodeAddr := nodeAddr + (jumpOffset.asUInt << beatBytesShift) // TODO: This could be replaced as nodeAddr := nodeAddr + jumpOffset
+        nodeAddr := nodeAddr + (jumpOffset.asUInt << beatBytesShift)
         state := bus_req_wait
       }
     }
