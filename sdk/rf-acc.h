@@ -34,6 +34,7 @@ typedef uint64_t rf_hw_node_t;
 
 typedef enum {
     ARGUMENT_GREATER_THAN_MAX_SUPPORTED,
+    ARGUMENT_ZERO_ERROR,
     MALLOC_ERROR,
     RF_SUCCESS
 } rf_error_codes;

@@ -1,6 +1,7 @@
 #include "rf-acc.h"
 #include <stdint.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 rf_acc_t* rf_init(rf_error_codes *res,
     int num_features,
@@ -11,6 +12,17 @@ rf_acc_t* rf_init(rf_error_codes *res,
 
     int result = 0;
 
+    result = result || num_features == 0;
+    result = result || num_classes == 0;
+    result = result || num_trees == 0;
+    result = result || num_nodes == 0;
+    result = result || depth == 0;
+
+    if (result) {
+	 *res = ARGUMENT_ZERO_ERROR;
+	  return NULL;
+    }
+	
     // TODO: Do we have individual return and indiviual error message
     result = result || (num_features > rf_acc_meta_max_features);
     result = result || (num_classes > rf_acc_meta_max_classes);
@@ -52,16 +64,16 @@ int rf_delete(rf_acc_t *self) {
     return 0;
 }
 
-static int64_t roundi(double x)
+static int32_t roundi(double x)
 {
   if (x < 0.0) {
-    return (int64_t)(x - 0.5);
+    return (int32_t)(x - 0.5);
   } else {
-    return (int64_t)(x + 0.5);
+    return (int32_t)(x + 0.5);
   }
 }
 
-static int64_t toFixedPoint(float x) {
+static int32_t toFixedPoint(float x) {
     double BP_SCALE = ((double)(1<<rf_acc_fixed_point_bp_width));
     return roundi(x * BP_SCALE);
 }
@@ -71,10 +83,11 @@ rf_hw_node_t convert_to_hw_node(const rf_node_t *node) {
 
     hw_node += ((uint64_t)(node->is_leaf) << 63);
     hw_node += ((uint64_t)(node->feature) << 54);
-    hw_node += ((uint64_t)toFixedPoint(node->threshold) << 22);
+    uint64_t threshold = (0x00000000ffffffff & (uint64_t)toFixedPoint(node->threshold));
+    hw_node += (threshold << 22);
     hw_node += ((uint64_t)node->left << 11);
     hw_node += ((uint64_t)node->right);
-
+	
     return hw_node;
 }
 
@@ -103,13 +116,13 @@ int rf_classify(rf_acc_t *self, float *candidates, int size) {
     // TODO: Change this
     if (!csr_ptr[0]) {
         for (int i=0; i < self->num_features-1; i++) {
-            csr_ptr[1] = toFixedPoint(candidates[i]);
+            csr_ptr[1] = (0x00000000ffffffff & (int64_t)toFixedPoint(candidates[i]));
         }
+	
         // Mark last to start the computation
-        uint64_t val = (toFixedPoint(candidates[self->num_features-1]));
+        uint64_t val = (0x00000000ffffffff & (int64_t)(toFixedPoint(candidates[self->num_features-1])));
         val += 1LL << 50;
         csr_ptr[1] = val;
-
         while (!(csr_ptr[0] & 1)) { continue; };
 
         return csr_ptr[2];
