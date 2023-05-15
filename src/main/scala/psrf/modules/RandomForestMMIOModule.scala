@@ -88,38 +88,28 @@ class RandomForestMMIOModule()(implicit val p: Parameters) extends Module with H
     majorityVoter.io.in.bits := decisions
   }
 
-  // TODO: Check errors from trees before counting
-
   // TODO: Check ready of majority voter
   when (state === s_count && majorityVoter.io.out.fire) {
     decision := majorityVoter.io.out.bits.classification
     // TODO: Add handling for no clear majority
-    // TODO: Add error handling
-    error := errors(0)
+    error := 0.U
     decisionValid := true.B
     state := s_done
     activeClassification := false.B
   }
-
-  //when (state === s_done) {
-//    decision := decisions(0)
-//    error := errors(0)
-//    decisionValid := true.B
-    //activeClassification := false.B
-  //}
-
-//  when (state === s_done) {
-//    decision := decisions(0)
-//    error := errors(0)
-//    decisionValid := true.B
-//    activeClassification := false.B
-//  }
 
   io.out.ready := true.B
   when(io.out.fire) {
     decisions(currTree) := io.out.bits.classes
     errors(currTree) := io.out.bits.error
     currTree := currTree + 1.U
+  }
+
+  when (io.out.fire && io.out.bits.error =/= 0.U) {
+    decisionValid := true.B
+    activeClassification := false.B
+    state := s_done
+    error := io.out.bits.error
   }
 
   when(resetDecision) {

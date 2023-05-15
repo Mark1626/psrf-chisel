@@ -252,4 +252,53 @@ class RandomForestMMIOModuleSpec extends AnyFlatSpec with ChiselScalatestTester 
       }
   }
 
+  it should "be able to stop on first error" in {
+    test(new RandomForestMMIOModule()(threeTreesParams))
+      .withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+        val helper = new RandomForestMMIOModuleSpecHelper(dut)
+
+        val candidate1 = 0.5
+        val candidate2 = 1.0
+
+        dut.candidateData.initSource()
+        dut.candidateData.setSourceClock(dut.clock)
+        dut.io.in.initSink()
+        dut.io.in.setSinkClock(dut.clock)
+        dut.io.out.initSource()
+        dut.io.out.setSourceClock(dut.clock)
+
+        val expected0 = new TreeInputBundle()(threeTreesParams).Lit(
+          _.candidates -> Vec.Lit(candidate1.F(32.W, 16.BP), candidate2.F(32.W, 16.BP)),
+          _.offset -> 0.U)
+
+        val expected1 = new TreeInputBundle()(threeTreesParams).Lit(
+          _.candidates -> Vec.Lit(candidate1.F(32.W, 16.BP), candidate2.F(32.W, 16.BP)),
+          _.offset -> 1.U)
+
+        val expected2 = new TreeInputBundle()(threeTreesParams).Lit(
+          _.candidates -> Vec.Lit(candidate1.F(32.W, 16.BP), candidate2.F(32.W, 16.BP)),
+          _.offset -> 2.U)
+
+        val result0 = new TreeOutputBundle().Lit(
+          _.classes -> 2.U,
+          _.error -> 1.U
+        )
+
+        dut.numClasses.poke(3.U)
+        dut.numTrees.poke(3.U)
+        dut.busy.expect(false.B)
+        dut.candidateData.enqueueSeq(Seq(
+          helper.createCandidate(candidate1).U,
+          helper.createCandidate(candidate2, 1).U
+        ))
+
+        dut.io.in.expectDequeue(expected0)
+        dut.busy.expect(true.B)
+        dut.io.out.enqueue(result0)
+        dut.decisionValidIO.expect(true.B)
+
+        dut.errorIO.expect(1.U)
+      }
+  }
+
 }
