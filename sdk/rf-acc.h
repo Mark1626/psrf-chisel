@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 static const int rf_acc_csr_address = 0x1100;
-static const int rf_acc_scratchpad_address = 0x2000;
+static const int rf_acc_scratchpad_address = 0x200000;
 
 static const int rf_acc_meta_max_features = 10;
 static const int rf_acc_meta_max_classes = 10;

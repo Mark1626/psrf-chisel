@@ -27,7 +27,8 @@ class RandomForestNodeModule(
   val nodeAddr = RegInit(address_base.U)
 
   val inputCountCond = WireDefault(false.B)
-  val (_, inputCountWrap) = Counter(inputCountCond, maxDepth)
+  val resetCounter = WireDefault(false.B)
+  val (_, inputCountWrap) = Counter(Range(0, maxDepth, 1), inputCountCond, resetCounter)
 
   val error = RegInit(0.U(2.W))
 
@@ -58,6 +59,7 @@ class RandomForestNodeModule(
     nodeAddr := address_base.U + (io.in.bits.offset << beatBytesShift)
     state := bus_req_wait
     readRootNode := true.B
+    resetCounter := true.B
     error := 0.U
   }
 

@@ -35,15 +35,20 @@ class WithTLRandomForest(
   scratchpadAddress: AddressSet,
   fixedPointWidth: Int = 32,
   fixedPointBinaryPoint: Int = 16,
+  maxFeatures: Int = 10,
+  maxNodes: Int = 1000,
+  maxClasses: Int = 10,
+  maxDepth: Int = 10,
+  maxTrees: Int = 100
 ) extends Config((site, here, up) => {
   case TLRandomForestKey => Some(TLRandomForestConfig(csrAddress, scratchpadAddress))
   case FixedPointWidth => fixedPointWidth
   case FixedPointBinaryPoint => fixedPointBinaryPoint
   case DecisionTreeConfigKey => DecisionTreeConfig(
-    maxFeatures = 2,
-    maxNodes = 10,
-    maxClasses = 10,
-    maxDepth = 10
+    maxFeatures = maxFeatures,
+    maxNodes = maxNodes,
+    maxClasses = maxClasses,
+    maxDepth = maxDepth
   )
-  case MaxTrees => 10
+  case MaxTrees => maxTrees
 })

@@ -45,7 +45,7 @@ int run_classification(max_counts *counts, rf_node_t *weights, int *offsets,
   return decision;
 }
 
-int test_complete_model() {
+int test_should_be_able_to_run_complete_model() {
   int expected_decisions[] = {2,2,1,0,1};
   max_counts *counts = counts_init(21, 10, 3, 10, 103);
 
@@ -166,7 +166,8 @@ int test_complete_model() {
   for (int i = 0; i < 5; i++) {
     int decision = run_classification(counts, weights, offsets, candidates[i],&res);
     if (decision != expected_decisions[i]) {
-      printf("- Assertion faild at simple test case using 21 trees\n");
+      printf("idx: %d Expected: %d actual: %d \n", i, expected_decisions[i], decision);
+      printf("- Assertion faild at simple test case using 21 trees;\n");
     }
     assert(decision == expected_decisions[i]);
   }
@@ -175,7 +176,7 @@ int test_complete_model() {
   return 0;
 }
 
-int test_trees_exceding_max() {
+int test_should_return_error_when_trees_exceed_max() {
   max_counts *counts = counts_init(101, 10, 3, 10, 103);
 
   // weights,offsets,candidates are not needed as we are only intrested in count;
@@ -187,7 +188,7 @@ int test_trees_exceding_max() {
   int decision = run_classification(counts, weights, offsets, candidates, &res);
   
   if (res != ARGUMENT_GREATER_THAN_MAX_SUPPORTED) {
-    printf("FAILED - Error not thrown when tree count is execiding max\n");
+    printf("FAILED - Error not thrown when tree count is exceeding max\n");
   }
 
   assert(decision == -1);
@@ -197,7 +198,7 @@ int test_trees_exceding_max() {
   return 0;
 }
 
-int test_features_execiding_max() {
+int test_should_return_error_when_features_exceed_max() {
   max_counts *counts = counts_init(10, 11, 3, 10, 103);
 
   // weights,offsets,candidates are not needed as we are only intrested in count;
@@ -209,7 +210,7 @@ int test_features_execiding_max() {
   int decision = run_classification(counts, weights, offsets, candidates,&res);
 
   if (res != ARGUMENT_GREATER_THAN_MAX_SUPPORTED) {
-    printf("FAILED - Error not thrown when features count is execiding max\n");
+    printf("FAILED - Error not thrown when features count is exceeding max\n");
   }
 
   assert(decision == -1);
@@ -219,7 +220,7 @@ int test_features_execiding_max() {
   return 0;
 }
 
-int test_classes_execiding_max() {
+int test_should_return_error_when_classes_exceed_max() {
   max_counts *counts = counts_init(10, 10, 12, 10, 103);
 
   // weights,offsets,candidates are not needed as we are only intrested in count;
@@ -231,7 +232,7 @@ int test_classes_execiding_max() {
   int decision = run_classification(counts, weights, offsets, candidates, &res);
   
   if (res != ARGUMENT_GREATER_THAN_MAX_SUPPORTED) {
-    printf("FAILED - Error not thrown when classes count is execiding max\n");
+    printf("FAILED - Error not thrown when classes count is exceeding max\n");
   }
   
   assert(decision == -1);
@@ -241,7 +242,7 @@ int test_classes_execiding_max() {
   return 0;
 }
 
-int test_nodes_execiding_max() {
+int test_should_return_error_when_nodes_exceed_max() {
   max_counts *counts = counts_init(10, 10, 12, 10, 1001);
 
   // weights,offsets,candidates are not needed as we are only intrested in count;
@@ -253,7 +254,7 @@ int test_nodes_execiding_max() {
   int decision = run_classification(counts, weights, offsets, candidates, &res);
   
   if (res != ARGUMENT_GREATER_THAN_MAX_SUPPORTED) {
-    printf("FAILED - Error not thrown when nodes count is execiding max\n");
+    printf("FAILED - Error not thrown when nodes count is exceeding max\n");
   }
 
   assert(decision == -1);
@@ -263,7 +264,7 @@ int test_nodes_execiding_max() {
   return 0;
 }
 
-int test_depth_execiding_max() {
+int test_should_return_error_when_depth_exceed_max() {
   max_counts *counts = counts_init(10, 10, 3, 20, 100);
 
   // weights,offsets,candidates are not needed as we are only intrested in count;
@@ -275,7 +276,7 @@ int test_depth_execiding_max() {
   int decision = run_classification(counts, weights, offsets, candidates, &res);
   
   if (res != ARGUMENT_GREATER_THAN_MAX_SUPPORTED) {
-    printf("FAILED - Error not thrown when depth count is execiding max\n");
+    printf("FAILED - Error not thrown when depth count is exceeding max\n");
   }
 
   assert(decision == -1);
@@ -285,7 +286,7 @@ int test_depth_execiding_max() {
   return 0;
 }
 
-int test_zero_trees() {
+int test_should_return_error_when_zero_trees_are_passed() {
   max_counts *counts = counts_init(0, 10, 3, 10, 0);
 
   float candidates[][10] = {10.52178765, 6.07072253, -1.99584827, 6.4549465,
@@ -310,11 +311,11 @@ int test_zero_trees() {
 }
 
 int main() {
-  test_complete_model();
-  test_trees_exceding_max();
-  test_features_execiding_max();
-  test_classes_execiding_max();
-  test_nodes_execiding_max();
-  test_depth_execiding_max();
-  test_zero_trees();
+  test_should_be_able_to_run_complete_model();
+  test_should_return_error_when_trees_exceed_max();
+  test_should_return_error_when_features_exceed_max();
+  test_should_return_error_when_classes_exceed_max();
+  test_should_return_error_when_nodes_exceed_max();
+  test_should_return_error_when_depth_exceed_max();
+  test_should_return_error_when_zero_trees_are_passed();
 }
