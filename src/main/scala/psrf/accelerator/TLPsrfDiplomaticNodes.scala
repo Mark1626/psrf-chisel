@@ -1,6 +1,6 @@
 package psrf.accelerator
 
-import chipsalliance.rocketchip.config.Parameters
+import org.chipsalliance.cde.config.Parameters
 import freechips.rocketchip.diplomacy.{AddressSet, IdRange, LazyModule, LazyModuleImp}
 import freechips.rocketchip.tilelink.{TLBuffer, TLFragmenter, TLIdentityNode, TLRAM, TLXbar}
 

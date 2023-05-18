@@ -1,8 +1,8 @@
 package psrf.accelerator
 
-import chipsalliance.rocketchip.config.{Config, Field}
 import freechips.rocketchip.diplomacy.{AddressSet, LazyModule}
 import freechips.rocketchip.subsystem.BaseSubsystem
+import org.chipsalliance.cde.config.{Config, Field}
 import psrf.params.{DecisionTreeConfig, DecisionTreeConfigKey, FixedPointBinaryPoint, FixedPointWidth, MaxTrees}
 
 case class TLRandomForestConfig(

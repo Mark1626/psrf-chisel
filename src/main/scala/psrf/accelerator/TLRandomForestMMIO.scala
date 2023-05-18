@@ -2,7 +2,7 @@ package psrf.accelerator
 
 import chisel3._
 import chisel3.util._
-import chipsalliance.rocketchip.config.Parameters
+import org.chipsalliance.cde.config.Parameters
 import chisel3.experimental.FixedPoint
 import freechips.rocketchip.diplomacy.{AddressSet, LazyModule, LazyModuleImp}
 import freechips.rocketchip.regmapper.{RegField, RegFieldDesc, RegisterRouter, RegisterRouterParams}
@@ -33,7 +33,7 @@ abstract class RandomForestMMIO(
 
   lazy val module = new LazyModuleImp(this) { outer =>
     val config = p(DecisionTreeConfigKey)
-    val impl = tlMaster.module
+    val impl: TLRandomForestNodeImp = tlMaster.module
 
     val decisionValid = Wire(Bool())
     // TODO: Revisit the constants

@@ -6,7 +6,7 @@ version := "0.1"
 
 name := "psrf-chisel"
 
-scalaVersion := "2.12.10"
+scalaVersion := "2.13.10"
 
 /*
 ThisBuild / scalaVersion := "2.12.13"

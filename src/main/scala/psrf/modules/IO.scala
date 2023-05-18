@@ -1,6 +1,6 @@
 package psrf.modules
 
-import chipsalliance.rocketchip.config.Parameters
+import org.chipsalliance.cde.config.Parameters
 import chisel3._
 import chisel3.util.{Decoupled, log2Ceil}
 import psrf.params.HasDecisionTreeParams

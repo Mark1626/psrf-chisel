@@ -3,7 +3,7 @@ package psrf.modules
 import chisel3._
 import chisel3.experimental.FixedPoint
 import chisel3.util._
-import chipsalliance.rocketchip.config.Parameters
+import org.chipsalliance.cde.config.Parameters
 import psrf.params.HasRandomForestParams
 
 class RandomForestNodeModule(

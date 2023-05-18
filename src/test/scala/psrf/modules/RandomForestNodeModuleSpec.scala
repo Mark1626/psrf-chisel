@@ -1,7 +1,7 @@
 package psrf.modules
 
 import chisel3._
-import chipsalliance.rocketchip.config.{Config, Parameters}
+import org.chipsalliance.cde.config.{Config, Parameters}
 import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
 import psrf.params.{DecisionTreeConfig, DecisionTreeConfigKey, FixedPointBinaryPoint, FixedPointWidth, MaxTrees}

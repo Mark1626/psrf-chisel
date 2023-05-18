@@ -5,5 +5,5 @@ import chisel3.internal.firrtl.BinaryPoint
 import chisel3.internal.firrtl.Width
 
 package object psrf {
-  val config = chipsalliance.rocketchip.config
+  val config = org.chipsalliance.cde.config
 }
