@@ -1,0 +1,77 @@
+From c966d838dec16208bd300bba6d65b5564ffbaeb4 Mon Sep 17 00:00:00 2001
+From: Mark1626 <nimalan.m@protonmail.com>
+Date: Wed, 24 May 2023 14:45:00 +0530
+Subject: [PATCH] RF accelerator installation for v1.8.1
+
+---
+ build.sbt                                              |  8 +++++++-
+ generators/chipyard/src/main/scala/DigitalTop.scala    |  1 +
+ .../chipyard/src/main/scala/config/RocketConfigs.scala | 10 ++++++++++
+ 3 files changed, 18 insertions(+), 1 deletion(-)
+
+diff --git a/build.sbt b/build.sbt
+index ec36a85f..f18230a7 100644
+--- a/build.sbt
++++ b/build.sbt
+@@ -149,7 +149,7 @@ lazy val chipyard = (project in file("generators/chipyard"))
+     sha3, // On separate line to allow for cleaner tutorial-setup patches
+     dsptools, `rocket-dsp-utils`,
+     gemmini, icenet, tracegen, cva6, nvdla, sodor, ibex, fft_generator,
+-    constellation, mempress)
++    constellation, mempress, psrf)
+   .settings(libraryDependencies ++= rocketLibDeps.value)
+   .settings(commonSettings)
+ 
+@@ -293,3 +293,9 @@ lazy val fpga_shells = (project in file("./fpga/fpga-shells"))
+ lazy val fpga_platforms = (project in file("./fpga"))
+   .dependsOn(chipyard, fpga_shells)
+   .settings(commonSettings)
++
++lazy val psrf = (project in file("./generators/psrf-chisel"))
++  .dependsOn(rocketchip, testchipip, dsptools, `rocket-dsp-utils`)
++  .settings(libraryDependencies ++= rocketLibDeps.value)
++  .settings(libraryDependencies ++= Seq("edu.berkeley.cs" %% "chiseltest"    % "0.5.1" % "test"))
++  .settings(commonSettings)
+diff --git a/generators/chipyard/src/main/scala/DigitalTop.scala b/generators/chipyard/src/main/scala/DigitalTop.scala
+index 2777ba36..52c64e77 100644
+--- a/generators/chipyard/src/main/scala/DigitalTop.scala
++++ b/generators/chipyard/src/main/scala/DigitalTop.scala
+@@ -34,6 +34,7 @@ class DigitalTop(implicit p: Parameters) extends ChipyardSystem
+   with chipyard.clocking.HasChipyardPRCI // Use Chipyard reset/clock distribution
+   with fftgenerator.CanHavePeripheryFFT // Enables optionally having an MMIO-based FFT block
+   with constellation.soc.CanHaveGlobalNoC // Support instantiating a global NoC interconnect
++  with psrf.accelerator.CanHaveTLRandomForestWithScratchpad
+ {
+   override lazy val module = new DigitalTopModule(this)
+ }
+diff --git a/generators/chipyard/src/main/scala/config/RocketConfigs.scala b/generators/chipyard/src/main/scala/config/RocketConfigs.scala
+index a082990e..56c814db 100644
+--- a/generators/chipyard/src/main/scala/config/RocketConfigs.scala
++++ b/generators/chipyard/src/main/scala/config/RocketConfigs.scala
+@@ -2,6 +2,7 @@ package chipyard
+ 
+ import freechips.rocketchip.config.{Config}
+ import freechips.rocketchip.diplomacy.{AsynchronousCrossing}
++import freechips.rocketchip.diplomacy.AddressSet
+ 
+ // --------------
+ // Rocket Configs
+@@ -11,6 +12,15 @@ class RocketConfig extends Config(
+   new freechips.rocketchip.subsystem.WithNBigCores(1) ++         // single rocket-core
+   new chipyard.config.AbstractConfig)
+ 
++class RandomForestConfig extends Config(
++  new psrf.accelerator.WithTLRandomForest(
++    csrAddress=AddressSet(0x1100, 0xff),
++    scratchpadAddress = AddressSet(0x200000, 0x1ffff)
++  ) ++
++    new freechips.rocketchip.subsystem.WithNBigCores(1) ++
++    new chipyard.config.AbstractConfig
++)
++
+ class TinyRocketConfig extends Config(
+   new chipyard.config.WithTLSerialLocation(
+     freechips.rocketchip.subsystem.FBUS,
+-- 
+2.31.1
+
